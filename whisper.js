@@ -5,8 +5,9 @@ const ai = require('./utils/ai');
 const deepgram = require('./utils/deepgram');
 
 
+
 async function doStuff() {
-    deepgram.transcribeRecording('media/test3.mp3');
+    deepgram.transcribeRecording('./media/test.mp3', './media/yoyo.txt');
 }
 
 doStuff();
