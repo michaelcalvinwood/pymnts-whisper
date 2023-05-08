@@ -15,9 +15,7 @@ const config = {
     diarize: true, 
     model: 'nova', 
     language: 'en-US',
-    summarize: true,
-    detect_topics: true,
-    detect_entities: true
+    summarize: true
 };
 
 exports.transcribeRecording = async (inputFile, outputFile = null) => {
@@ -38,4 +36,17 @@ exports.transcribeRecording = async (inputFile, outputFile = null) => {
     }
 }
 
+exports.generateSpeakerBasedTranscript = async (info) => {
+    let transcript;
+
+    try {
+        transcript = info.results.channels[0].alternatives[0].paragraphs.transcript;
+    } catch (err) {
+        console.error('Error [deepgram.js generateSpeakerBasedTranscript]:', err.message ? err.message : err);
+        return false;
+    }
+
+    return transcript;
+
+}
 
