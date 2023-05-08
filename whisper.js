@@ -1,9 +1,12 @@
 
 
 const media = require('./utils/media');
+const ai = require('./utils/ai');
+const deepgram = require('./utils/deepgram');
 
-(async () => {
-    const result = await media.download('https://content.jwplatform.com/videos/L0jBTtHF-96F1EhHl.mp4', 'media/test.mp4')
 
-    console.log('result', result);
-})()
+async function doStuff() {
+    deepgram.transcribeRecording('media/test3.mp3');
+}
+
+doStuff();
