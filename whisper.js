@@ -169,6 +169,10 @@ async function doStuff() {
     
 }
 
+const socketConnection = socket => {
+    console.log('connection', socket.id);
+}
+
 app.get('/', (req, res) => {
     res.send('Hello, World!');
 });
@@ -177,8 +181,22 @@ const httpsServer = https.createServer({
     key: fs.readFileSync(privateKeyPath),
     cert: fs.readFileSync(fullchainPath),
   }, app);
-  
-httpsServer.listen(httpsPort, () => {
+
+const io = require('socket.io')(httpsServer, {
+    cors: {
+      origin: "http://localhost:3000",
+      methods: ["GET", "POST"]
+    }
+  });
+
+io.on('connection', socket => {
+    socketConnection(socket);
+    // client.on('connection', (socket) => socketConnection(socket));
+    // client.on('event', data => { console.log(data) });
+    // client.on('disconnect', () => { console.log('disconnected', client.id)});
+});
+
+httpsServer.listen(httpsPort,  () => {
     console.log(`HTTPS Server running on port ${httpsPort}`);
 });
 
