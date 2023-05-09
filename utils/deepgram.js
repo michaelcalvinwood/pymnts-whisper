@@ -30,10 +30,9 @@ exports.convertMp4ToMp3 = fileName => {
                 return reject(error.message);
             }
             if (stderr) {
-                console.log(`stderr: ${stderr}`);
-                return reject(err);
+                //console.log(`stderr: ${stderr}`);
             }
-            console.log(`stdout: ${stdout}`);
+            //console.log(`stdout: ${stdout}`);
             return resolve(newFile);
         });
     })
@@ -86,4 +85,26 @@ exports.notableQuotes = info => {
 exports.splitTranscriptIntoChunks = (transcript, maxChunkSize = 1200) => {
     const sentences = transcript.split("\n");
     console.log(sentences);
+}
+
+exports.assignSpeakers = (transcript, speakers) => {
+    if (!speakers.length) return transcript;
+    const paragraphs = transcript.split("\n");
+
+    for (let i = 0; i < paragraphs.length; ++i) {
+        const paragraph = paragraphs[i];
+        if (paragraph.startsWith('Speaker')) {
+            const numberStart = 7;
+            const numberEnd = paragraph.indexOf(':');
+            if (numberEnd > 0) {
+                const index = isNaN(paragraph.substring(numberStart, numberEnd)) ? -1 : Number(paragraph.substring(numberStart, numberEnd));
+                console.log(index);
+                if (index < 0) continue;
+
+                paragraphs[i] = speakers[index] + paragraph.substring(numberEnd);
+            }
+        }
+    }
+
+    return paragraphs.join("\n");
 }
