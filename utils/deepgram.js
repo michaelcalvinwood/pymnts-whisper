@@ -82,28 +82,52 @@ exports.notableQuotes = info => {
     console.log(sentences);
 }
 
-exports.splitTranscriptIntoChunks = (transcript, maxChunkSize = 1200) => {
-    const sentences = transcript.split("\n");
-    console.log(sentences);
+exports.splitTranscriptIntoSpeakerChunks = (transcript) => {
+    const paragraphs = transcript.split("\n");
+    const speakerChunks = [];
+    let curSpeaker = -1;
+    let curChunk = "";
+
+    for (let i = 0; i < paragraphs.length; ++i) {
+        const paragraph = paragraphs[i];
+        const speakerNumber = getSpeakerNumber(paragraph);
+        if (speakerNumber === false) {
+            curChunk += paragraph + "\n";
+            continue;
+        }
+        if (curChunk.length) speakerChunks.push(curChunk);
+        curChunk = paragraph + "\n";
+    }
+    
+    if (curChunk.length) speakerChunks.push(curChunk);
+    console.log('speakerChunks', speakerChunks, speakerChunks.length);
+    return speakerChunks;
+}
+
+function getSpeakerNumber (paragraph) {
+    if (paragraph.startsWith('Speaker')) {
+        const numberStart = 7;
+        const numberEnd = paragraph.indexOf(':');
+        if (numberEnd < 0) return false;
+        const index = isNaN(paragraph.substring(numberStart, numberEnd)) ? -1 : Number(paragraph.substring(numberStart, numberEnd));
+        if (index < 0) false;
+
+        return index;
+    }
+    return false;
 }
 
 exports.assignSpeakers = (transcript, speakers) => {
     if (!speakers.length) return transcript;
     const paragraphs = transcript.split("\n");
 
+  
+
     for (let i = 0; i < paragraphs.length; ++i) {
         const paragraph = paragraphs[i];
-        if (paragraph.startsWith('Speaker')) {
-            const numberStart = 7;
-            const numberEnd = paragraph.indexOf(':');
-            if (numberEnd > 0) {
-                const index = isNaN(paragraph.substring(numberStart, numberEnd)) ? -1 : Number(paragraph.substring(numberStart, numberEnd));
-                console.log(index);
-                if (index < 0) continue;
-
-                paragraphs[i] = speakers[index] + paragraph.substring(numberEnd);
-            }
-        }
+        index = getSpeakerNumber(paragraph);
+        if (index === false) continue;
+        paragraphs[i] = speakers[index] + paragraph.substring(numberEnd);
     }
 
     return paragraphs.join("\n");

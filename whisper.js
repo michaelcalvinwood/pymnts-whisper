@@ -31,11 +31,15 @@ async function doStuff() {
 
     if (info) {
         const rawTranscript = deepgram.generateSpeakerBasedTranscript(info);
-        console.log('assigning speakers')
+        const speakerChunks = deepgram.splitTranscriptIntoSpeakerChunks(rawTranscript);
         
-        speakerScript = deepgram.assignSpeakers(rawTranscript, speakers);
-        console.log('cleaning transcript', speakerScript);
+        console.log('assigning speakers', rawTranscript);
+        //const rawChunks = deepgram.splitTranscriptIntoChunks(rawTranscript);
 
+
+        
+        //speakerScript = deepgram.assignSpeakers(rawTranscript, speakers);
+        //console.log('cleaning transcript', speakerScript);
 
         // clean transript in chunks (transcript, speakers)
         
