@@ -169,8 +169,24 @@ async function doStuff() {
     
 }
 
+const handleUrl = async (socket, url) => {
+    console.log('the url is ', url);
+
+    let urlInfo;
+    try {
+        urlInfo = new URL(url);
+    } catch (err) {
+        return socket.emit('error', 'invalid url');
+    }
+
+    console.log('urlInfo', urlInfo);
+
+}
+
 const socketConnection = socket => {
     console.log('connection', socket.id);
+
+    socket.on('url', (url) => handleUrl(socket, url));
 }
 
 app.get('/', (req, res) => {
