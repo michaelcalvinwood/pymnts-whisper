@@ -1,11 +1,27 @@
+const httpsPort = 6400;
+const privateKeyPath = '/etc/letsencrypt/live/node.pymnts.com/privkey.pem';
+const fullchainPath = '/etc/letsencrypt/live/node.pymnts.com/fullchain.pem';
+
 const { v4: uuidv4 } = require('uuid');
 
 const media = require('./utils/media');
 const ai = require('./utils/ai');
 const deepgram = require('./utils/deepgram');
 const axiosTools = require('./utils/axios');
+const express = require('express');
+const https = require('https');
+const cors = require('cors');
+const fs = require('fs');
+
+const app = express();
+app.use(express.static('public'));
+app.use(express.json({limit: '200mb'})); 
+app.use(cors());
+
+
 
 const info = require('./media/visa.json');
+
 
 const url = 'https://content.jwplatform.com/videos/L0jBTtHF-96F1EhHl.mp4';
 const speakers = [
@@ -48,12 +64,9 @@ async function doStuff() {
         console.log('assigning speakers to AI chunks');
         let speakerAssignedChunks = [];
         for (let i = 0; i < transcriptChunks.length; ++i) {
-            console.log('chunk size', transcriptChunks[i].length, deepgram.getNumWords(transcriptChunks[i]));
             speakerAssignedChunks.push(deepgram.assignSpeakers(transcriptChunks[i], speakers));
         }
         transcriptChunks = null;
-
-       
 
         const cleanedChunks = [];
         for (let i = 0; i < speakerAssignedChunks.length; ++i) {
@@ -80,15 +93,67 @@ async function doStuff() {
             cleanedChunks.push(result.content);
         }
 
-        console.log(cleanedChunks);
+        speakerAssignedChunks = null;
 
-        
+        let article;
+        if (cleanedChunks.length === 1) {
+            console.log(`Using AI to write the article. This can take several minutes.`);
+            let result = await ai.fullArticle(cleanedChunks[0]);
+            let count = 0;
+            let seconds = 30;
+            const maxCount = 5;
+            while (result.status === 'error') {
+                seconds *= 2;
+                ++count;
+                if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
+                console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
+                await sleep(seconds);
+                result = await ai.fullArticle(cleanedChunks[0]);
+            }
+            
+            article = result.content;
+            console.log(article);
+        } else {
+            for (let i = 0; i < cleanedChunks.length; ++i) {
+                console.log(`Using AI to write the article based on chunk #${i+1}. This can take several minutes.`);
+                if (i === 0) {
+                    let result = await ai.startArticle(cleanedChunks[i]);
+                    let count = 0;
+                    let seconds = 30;
+                    const maxCount = 5;
+                    while (result.status === 'error') {
+                        seconds *= 2;
+                        ++count;
+                        if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
+                        console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
+                        await sleep(seconds);
+                        result = await ai.startArticle(cleanedChunks[i]);
+                    }
+                    
+                    article = result.content;
+                    
+                } else {
+                    let result;
+                    if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i]);
+                    else result = await ai.continueArticle(cleanedChunks[i]);
+                    let count = 0;
+                    let seconds = 30;
+                    const maxCount = 5;
+                    while (result.status === 'error') {
+                        seconds *= 2;
+                        ++count;
+                        if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
+                        console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
+                        await sleep(seconds);
+                        if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i]);
+                        else result = await ai.continueArticle(cleanedChunks[i]);
+                    }
+                    
+                    article += result.content;
+                }
+            }
+        }
 
-        
-        
-        //console.log('cleaning transcript', speakerScript);
-
-        // clean transript in chunks (transcript, speakers)
         
         // Generate list of 10 titles
 
@@ -101,9 +166,21 @@ async function doStuff() {
 
         //console.log(transcript);
     }
-
-    
     
 }
 
-doStuff();
+app.get('/', (req, res) => {
+    res.send('Hello, World!');
+});
+
+const httpsServer = https.createServer({
+    key: fs.readFileSync(privateKeyPath),
+    cert: fs.readFileSync(fullchainPath),
+  }, app);
+  
+httpsServer.listen(httpsPort, () => {
+    console.log(`HTTPS Server running on port ${httpsPort}`);
+});
+
+
+

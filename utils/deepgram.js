@@ -106,7 +106,6 @@ exports.getTranscriptChunks = (speakerChunks, maxSize = 1200) => {
         }
     }
 
-    console.log('transcript chunks', chunks);
     
     return chunks;
 }
@@ -129,7 +128,7 @@ exports.getSpeakerChunks = (transcript) => {
     }
     
     if (curChunk.length) speakerChunks.push(curChunk);
-    console.log('speakerChunks', speakerChunks, speakerChunks.length);
+    
     return speakerChunks;
 }
 

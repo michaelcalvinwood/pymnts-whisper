@@ -57,8 +57,7 @@ exports.transcribeAudio = async (inputFileName, outputFileName) => {
     return;
 }
 
-exports.cleanTranscriptChunk = async (chunk) => {
-    let prompt = process.env.CLEANUP_TRANSCRIPT_PROMPT + chunk;
+const getResponse = async prompt => {
     if (!prompt.endsWith("\n")) prompt += "\n";
 
     let result;
@@ -70,6 +69,7 @@ exports.cleanTranscriptChunk = async (chunk) => {
         console.error("axios err.data", err.response.status, err.response);
         return {
             status: 'error',
+            number: err.response.status,
             message: err.response,
         }
     }
@@ -85,4 +85,27 @@ exports.cleanTranscriptChunk = async (chunk) => {
     //console.log(response);
 
     return response;
+}
+
+exports.cleanTranscriptChunk = async (chunk) => {
+    let prompt = process.env.CLEANUP_TRANSCRIPT_PROMPT + chunk;
+    return getResponse(prompt);    
+}
+
+exports.startArticle = async initialTranscript => {
+    let prompt = `Below is an exerpt of a transcript. You will create the beginning of an article based on this transcript. Your response must be in HTML format. The response must engaging while using the information in the article. Do not create a blow by blow description of the transcript. The response should be approximately 500 words. The response must include two quotes from the transcript. \n\nTranscript:\n${initialTranscript}`;
+
+    return getResponse(prompt);    
+}
+
+exports.fullArticle = async transcript => {
+    console.log("ai.fullArticle");
+}
+
+exports.continueArticle = async transcript => {
+    console.log("ai.continueArticle");
+}
+
+exports.endArticle = async transcript => {
+    console.log("ai.endArticle");
 }
