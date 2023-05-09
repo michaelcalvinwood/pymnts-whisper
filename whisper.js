@@ -31,14 +31,23 @@ async function doStuff() {
 
     if (info) {
         const rawTranscript = deepgram.generateSpeakerBasedTranscript(info);
-        const speakerChunks = deepgram.splitTranscriptIntoSpeakerChunks(rawTranscript);
-        
-        console.log('assigning speakers', rawTranscript);
+        const speakerChunks = deepgram.getSpeakerChunks(rawTranscript);
+        const transcriptChunks = deepgram.getTranscriptChunks(speakerChunks);
+
+        //console.log('assigning speakers', rawTranscript);
+        const speakerAssignedChunks = [];
+        for (let i = 0; i < transcriptChunks.length; ++i) {
+            console.log('chunk size', transcriptChunks[i].length, deepgram.getNumWords(transcriptChunks[i]));
+            speakerAssignedChunks.push(deepgram.assignSpeakers(transcriptChunks[i], speakers));
+        }
+
+        console.log('speakerAssignedChunks', speakerAssignedChunks);
+
         //const rawChunks = deepgram.splitTranscriptIntoChunks(rawTranscript);
 
 
         
-        //speakerScript = deepgram.assignSpeakers(rawTranscript, speakers);
+        
         //console.log('cleaning transcript', speakerScript);
 
         // clean transript in chunks (transcript, speakers)

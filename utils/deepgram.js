@@ -82,7 +82,36 @@ exports.notableQuotes = info => {
     console.log(sentences);
 }
 
-exports.splitTranscriptIntoSpeakerChunks = (transcript) => {
+exports.getNumWords = (str) => {
+    const words = str.split(' ');
+    return words.length ? words.length : 1;
+}
+
+exports.getTranscriptChunks = (speakerChunks, maxSize = 1200) => {
+    const chunks = [''];
+    let index = 0;
+    let curSize = 0;
+
+    for (let i = 0; i < speakerChunks.length; ++i) {
+        const curChunk = speakerChunks[i];
+        const chunkSize = exports.getNumWords(curChunk);
+        console.log('curChunk length', chunkSize);
+        if (curSize + chunkSize <= maxSize) {
+            chunks[index] += curChunk;
+            curSize += chunkSize;
+        } else {
+            chunks.push(curChunk);
+            ++index;
+            curSize = chunkSize;
+        }
+    }
+
+    console.log('transcript chunks', chunks);
+    
+    return chunks;
+}
+
+exports.getSpeakerChunks = (transcript) => {
     const paragraphs = transcript.split("\n");
     const speakerChunks = [];
     let curSpeaker = -1;
@@ -121,13 +150,13 @@ exports.assignSpeakers = (transcript, speakers) => {
     if (!speakers.length) return transcript;
     const paragraphs = transcript.split("\n");
 
-  
-
     for (let i = 0; i < paragraphs.length; ++i) {
         const paragraph = paragraphs[i];
         index = getSpeakerNumber(paragraph);
         if (index === false) continue;
-        paragraphs[i] = speakers[index] + paragraph.substring(numberEnd);
+        const loc = paragraph.indexOf(':');
+        if (loc === -1) continue;
+        paragraphs[i] = speakers[index] + paragraph.substring(loc);
     }
 
     return paragraphs.join("\n");
