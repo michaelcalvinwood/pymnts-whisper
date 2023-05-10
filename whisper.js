@@ -172,9 +172,6 @@ async function doStuff() {
 const handleUrl = async (socket, url) => {
     console.log('the url is ', url);
 
-    const speakers = deepgram.getSpeakers(info);
-    socket.emit('speakers', speakers);
-    return;
 
     let urlInfo;
     try {
@@ -214,6 +211,18 @@ const handleUrl = async (socket, url) => {
     // console.log("transcribing the mp3 into raw words");
     //const info = await deepgram.transcribeRecording(mp3File, jsonFile);
 
+    if (!info) return socket.emit('error', 'Could not transcribe the video.');
+
+    const speakers = deepgram.getSpeakers(info);
+    socket.emit('speakers', speakers);
+
+    socket.emit('message', 'Generating raw transcript.');
+    let rawTranscript = deepgram.generateSpeakerBasedTranscript(info);
+
+    socket.emit('transcript', rawTranscript);
+    socket.emit('done', 'ready for speaker input');
+
+    return;
 
     //console.log('urlInfo', urlInfo);
 
