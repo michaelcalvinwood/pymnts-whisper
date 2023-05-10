@@ -32,7 +32,7 @@ exports.convertMp4ToMp3 = fileName => {
             if (stderr) {
                 //console.log(`stderr: ${stderr}`);
             }
-            //console.log(`stdout: ${stdout}`);
+            console.log(`stdout: ${stdout}`);
             return resolve(newFile);
         });
     })
@@ -159,4 +159,11 @@ exports.assignSpeakers = (transcript, speakers) => {
     }
 
     return paragraphs.join("\n");
+}
+
+exports.getSpeakers = info => {
+    const paragraphs = info.results.channels[0].alternatives[0].paragraphs.paragraphs;
+    const speakers = new Set();
+    for (let i = 0; i < paragraphs.length; ++i) speakers.add(`Speaker ${paragraphs[i].speaker}`);
+    return Array.from(speakers);
 }

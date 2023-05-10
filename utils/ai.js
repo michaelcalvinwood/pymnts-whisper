@@ -98,10 +98,6 @@ exports.startArticle = async initialTranscript => {
     return getResponse(prompt);    
 }
 
-exports.fullArticle = async transcript => {
-    console.log("ai.fullArticle");
-}
-
 exports.continueArticle = async transcript => {
     console.log("ai.continueArticle");
 }
@@ -109,3 +105,9 @@ exports.continueArticle = async transcript => {
 exports.endArticle = async transcript => {
     console.log("ai.endArticle");
 }
+
+exports.fullArticle = async transcript => {
+    console.log("ai.fullArticle");
+}
+
+
