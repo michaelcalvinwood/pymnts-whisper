@@ -225,13 +225,17 @@ const handleUrl = async (socket, url) => {
     return;
 
     //console.log('urlInfo', urlInfo);
+}
 
+const handleSpeakers = async (socket, speakerList) => {
+    console.log('got speakers', speakerList);
 }
 
 const socketConnection = socket => {
     console.log('connection', socket.id);
 
     socket.on('url', (url) => handleUrl(socket, url));
+    socket.on('speakers', (speakerList) => handleSpeakers(socket, speakerList));
 }
 
 app.get('/', (req, res) => {
