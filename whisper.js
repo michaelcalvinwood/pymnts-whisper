@@ -18,20 +18,20 @@ app.use(express.static('public'));
 app.use(express.json({limit: '200mb'})); 
 app.use(cors());
 
-
-
 const info = require('./media/visa.json');
 
-
 const url = 'https://content.jwplatform.com/videos/L0jBTtHF-96F1EhHl.mp4';
-const speakers = [
-    'Owen McDonald', 'Mark', 'Josh'
-]
 
 /*
  * htmltopdf: https://www.npmjs.com/package/html2pdf.js
  */
 
+async function test() {
+    let result = await ai.getDivinciResponse('What color is the sky?');
+
+    console.log('result', result);
+}
+test();
 
 const sleep = seconds => new Promise(r => setTimeout(r, seconds * 1000));
 
@@ -218,6 +218,7 @@ const handleUrl = async (socket, url) => {
 
     socket.emit('message', 'Generating raw transcript.');
     let rawTranscript = deepgram.generateSpeakerBasedTranscript(info);
+    socket.rawTranscript = rawTranscript;
 
     socket.emit('transcript', rawTranscript);
     socket.emit('done', 'ready for speaker input');
@@ -229,6 +230,65 @@ const handleUrl = async (socket, url) => {
 
 const handleSpeakers = async (socket, speakerList) => {
     console.log('got speakers', speakerList);
+    socket.emit('gotSpeakers', 'got them');
+
+    socket.emit ('message', 'Assigning speakers to transcript.');
+    
+    let speakerChunks = deepgram.getSpeakerChunks(socket.rawTranscript);
+    delete socket.rawTranscript;
+
+    let transcriptChunks = deepgram.getTranscriptChunks(speakerChunks);
+    speakerChunks = null;
+
+    let speakerAssignedChunks = [];
+    for (let i = 0; i < transcriptChunks.length; ++i) {
+        speakerAssignedChunks.push(deepgram.assignSpeakers(transcriptChunks[i], speakerList));
+    }
+    socket.emit('transcript', speakerAssignedChunks.join("\n"));
+
+    transcriptChunks = null;
+
+    const cleanedChunks = [];
+    for (let i = 0; i < speakerAssignedChunks.length; ++i) {
+        socket.emit('message',`Using AI to clean up imperfections in transcript chunk #${i+1} of ${speakerAssignedChunks.length}. This can take several minutes.`);
+        let result;
+        
+        result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i], socket);
+        
+        if (result.status === 'error') return socket.emit('error', 'ChatGPT servers are down. Please try again later.');
+        
+        cleanedChunks.push(result.content);
+        socket.emit('transcript', cleanedChunks.join("\n"));
+    }
+
+    speakerAssignedChunks = null;
+
+    let article;
+    if (cleanedChunks.length === 1) {
+        socket.emit('message', `Using AI to write the article. This can take several minutes.`);
+        let result = await ai.fullArticle(cleanedChunks[0]);
+        article = result.content;
+        socket.emit('article', article);
+    } else {
+        for (let i = 0; i < cleanedChunks.length; ++i) {
+            socket.emit('message', `Using AI to write the article based on chunk #${i+1} of ${cleanedChunks.length}. This can take several minutes.`);
+            if (i === 0) {
+                let result = await ai.startArticle(cleanedChunks[i]);
+                console.log('result.content', result.content);
+                article = result.content;
+                socket.emit('article', article);
+            } else {
+                let result;
+                if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i], article);
+                else result = await ai.continueArticle(cleanedChunks[i]);
+                console.log('result.content', result.content);
+                article += result.content;
+                socket.emit('article', article);
+            }
+        }
+    }
+
+    socket.emit('done', 'articleComplete');
 }
 
 const socketConnection = socket => {
