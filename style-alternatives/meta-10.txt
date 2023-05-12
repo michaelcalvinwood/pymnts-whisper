@@ -1,0 +1,10 @@
+meta-09 2 pass
+plus
+
+Davinci temperature .7
+length 1500
+"""Below is a News Article and a related Transcript. Elaborate on the News Article and also incorporate at least three relevent quotes from the Transcript. Be sure to preserve the dynamic and engaging style.
+News Article:
+{News Article}
+Transcript:
+{Transcript}"""\n

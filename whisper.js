@@ -57,7 +57,7 @@ async function test() {
         }
     }
 }
-test();
+//test();
 
 const sleep = seconds => new Promise(r => setTimeout(r, seconds * 1000));
 
@@ -296,6 +296,8 @@ const handleSpeakers = async (socket, info) => {
     }
 
     fs.writeFileSync('cleanedChunks.json', JSON.stringify(cleanedChunks));
+    fs.writeFileSync('cleanedTranscript.txt', cleanedChunks.join("\n"));
+    
     // return socket.emit('message', "chunks ready for debugging");
 
     // let cleanedChunks = fs.readFileSync('./cleanedChunks.json', 'utf-8');
