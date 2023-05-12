@@ -1,0 +1,9 @@
+exports.startArticle = async (initialTranscript, model = 'turbo', socket = null) => {
+    let prompt = `"""I want you to create an warm, conversational blog post based on the information revealed in the following Transcript.
+    Make your blog post four paragraphs.  
+    Transcript:
+    ${initialTranscript}"""\n`;
+
+    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket, 0.5, 'You are a witty writer — creating fascinating narratives from factual information.');   
+}
+

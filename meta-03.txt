@@ -1,0 +1,5 @@
+exports.startArticle = async (initialTranscript, model = 'turbo', socket = null) => {
+    let prompt = `Using a fun, witty tone targeting 18-24 year-olds, tell a fascinating, engaging, creative narrative using the information in this transcript. Make the narrative consist of four fun and interesting paragraphs. Do not include a summary or conclusion.\n\nTranscript:\n${initialTranscript}`;
+
+    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket, 0.4, 'You are a witty writer — creating fascinating narratives from factual information.');   
+}

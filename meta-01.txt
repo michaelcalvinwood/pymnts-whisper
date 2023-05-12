@@ -1,0 +1,5 @@
+exports.startArticle = async (initialTranscript, model = 'turbo', socket = null) => {
+    let prompt = `Below is an exerpt of a transcript. Create the first four paragraphs of a dynamic, creative, conversational, engaging article derived from the information in this transcript. The response should be approximately 500 words. Because you only writing the beginning of the article, do not include any conclusion or summary in the response.\n\nTranscript:\n${initialTranscript}`;
+
+    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket, 0.7, 'You are a creative storyteller — creating fascinating narratives from factual information.');   
+}

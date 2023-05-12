@@ -1,0 +1,6 @@
+witty professor
+
+plus
+
+"""In the style of a witty journalist, rewrite the following News Article in a much more engaging and conversational manner.
+News Article: 

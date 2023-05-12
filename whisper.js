@@ -18,7 +18,7 @@ app.use(express.static('public'));
 app.use(express.json({limit: '200mb'})); 
 app.use(cors());
 
-const info = require('./media/visa.json');
+// const info = require('./media/visa.json');
 
 const url = 'https://content.jwplatform.com/videos/L0jBTtHF-96F1EhHl.mp4';
 
@@ -27,9 +27,35 @@ const url = 'https://content.jwplatform.com/videos/L0jBTtHF-96F1EhHl.mp4';
  */
 
 async function test() {
-    let result = await ai.getDivinciResponse('What color is the sky?');
+    let cleanedChunks = fs.readFileSync('./cleanedChunks.json', 'utf-8');
+    cleanedChunks = JSON.parse(cleanedChunks);
 
-    console.log('result', result);
+    speakerAssignedChunks = null;
+
+    //console.log('cleanedChunks', cleanedChunks);
+    console.log('testing');
+
+    let article;
+    if (cleanedChunks.length === 1) {
+        let result = await ai.fullArticle(cleanedChunks[0]);
+        article = result.content;
+        socket.emit('article', article);
+    } else {
+        for (let i = 0; i < cleanedChunks.length; ++i) {
+            if (i === 0) {
+                let result = await ai.startArticle(cleanedChunks[i]);
+                console.log('result.content', result.content);
+                article = result.content;
+            } else {
+                let result;
+                if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i], article);
+                else result = await ai.continueArticle(cleanedChunks[i]);
+                console.log('result.content', result.content);
+                article += result.content;
+            }
+            break;
+        }
+    }
 }
 test();
 
@@ -194,7 +220,7 @@ const handleUrl = async (socket, url) => {
         console.error(err);
         return socket.emit('error', `Could not download ${videoName}. Please try again later.`)
     }
-    socket.emit('message', `Converting ${videoName} to mp3`);
+    socket.emit('message', `Converting video file into an audio file.`);
 
     let mp3File;
     try {
@@ -208,8 +234,9 @@ const handleUrl = async (socket, url) => {
     if (loc === -1) return socket.emit('error', `Could not convert ${videoName} to mp3.`);
     
     const jsonFile = mp3File.substring(0, loc) + '.json';
-    // console.log("transcribing the mp3 into raw words");
-    //const info = await deepgram.transcribeRecording(mp3File, jsonFile);
+   
+    socket.emit ("Transcribing the audio file into raw words.");
+    const info = await deepgram.transcribeRecording(mp3File, jsonFile);
 
     if (!info) return socket.emit('error', 'Could not transcribe the video.');
 
@@ -218,9 +245,10 @@ const handleUrl = async (socket, url) => {
 
     socket.emit('message', 'Generating raw transcript.');
     let rawTranscript = deepgram.generateSpeakerBasedTranscript(info);
-    socket.rawTranscript = rawTranscript;
+    console.log('rawTranscript', rawTranscript);
 
     socket.emit('transcript', rawTranscript);
+    socket.emit('rawTranscript', rawTranscript);
     socket.emit('done', 'ready for speaker input');
 
     return;
@@ -228,14 +256,17 @@ const handleUrl = async (socket, url) => {
     //console.log('urlInfo', urlInfo);
 }
 
-const handleSpeakers = async (socket, speakerList) => {
-    console.log('got speakers', speakerList);
+const handleSpeakers = async (socket, info) => {
+    const { rawTranscript, speakerList } = info;
+    console.log('handleSpeakers', rawTranscript);
+
     socket.emit('gotSpeakers', 'got them');
 
     socket.emit ('message', 'Assigning speakers to transcript.');
     
-    let speakerChunks = deepgram.getSpeakerChunks(socket.rawTranscript);
-    delete socket.rawTranscript;
+    let speakerChunks = deepgram.getSpeakerChunks(rawTranscript);
+
+    console.log('speakerChunks', speakerChunks)
 
     let transcriptChunks = deepgram.getTranscriptChunks(speakerChunks);
     speakerChunks = null;
@@ -246,22 +277,33 @@ const handleSpeakers = async (socket, speakerList) => {
     }
     socket.emit('transcript', speakerAssignedChunks.join("\n"));
 
+    console.log('speakerAssignedChunks', speakerAssignedChunks);
+
     transcriptChunks = null;
 
     const cleanedChunks = [];
+
     for (let i = 0; i < speakerAssignedChunks.length; ++i) {
         socket.emit('message',`Using AI to clean up imperfections in transcript chunk #${i+1} of ${speakerAssignedChunks.length}. This can take several minutes.`);
         let result;
         
-        result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i], socket);
+        result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i], 'turbo', socket);
         
         if (result.status === 'error') return socket.emit('error', 'ChatGPT servers are down. Please try again later.');
-        
+        console.log(`Cleaned Chunk #${i+1} of ${speakerAssignedChunks.length}`, result);
         cleanedChunks.push(result.content);
         socket.emit('transcript', cleanedChunks.join("\n"));
     }
 
+    fs.writeFileSync('cleanedChunks.json', JSON.stringify(cleanedChunks));
+    // return socket.emit('message', "chunks ready for debugging");
+
+    // let cleanedChunks = fs.readFileSync('./cleanedChunks.json', 'utf-8');
+    // cleanedChunks = JSON.parse(cleanedChunks);
+
     speakerAssignedChunks = null;
+
+    console.log('cleanedChunks', cleanedChunks);
 
     let article;
     if (cleanedChunks.length === 1) {
@@ -292,6 +334,7 @@ const handleSpeakers = async (socket, speakerList) => {
 }
 
 const socketConnection = socket => {
+
     console.log('connection', socket.id);
 
     socket.on('url', (url) => handleUrl(socket, url));

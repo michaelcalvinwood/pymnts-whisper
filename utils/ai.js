@@ -14,7 +14,13 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 const sleep = seconds => new Promise(r => setTimeout(r, seconds * 1000));
 
-exports.getDivinciResponse = async (prompt) => {
+exports.getDivinciResponse = async (prompt, socket = null) => {
+    console.log("DAVINCI");
+
+    prompt = '"""' + prompt.replaceAll("\n\n", "\n") + '"""' + "\n";
+
+    console.log('prompt', prompt);
+
     const request = {
         url: 'https://api.openai.com/v1/completions',
         method: 'post',
@@ -24,8 +30,8 @@ exports.getDivinciResponse = async (prompt) => {
         data: {
             model: "text-davinci-003",
             prompt,
-            max_tokens: 4000,
-            temperature: 0
+            max_tokens: 1500,
+            temperature: .7
         }
     }
 
@@ -35,7 +41,8 @@ exports.getDivinciResponse = async (prompt) => {
         response = await axios(request);
         console.log(response.data);
     } catch (err) {
-        console.error(err);
+        console.log(JSON.stringify(err, null, 4));
+        //console.error(err);
         return {
             status: 'error',
             number: err.response.status,
@@ -50,7 +57,7 @@ exports.getDivinciResponse = async (prompt) => {
     }
 }
 
-async function turboChatCompletion (prompt, service = 'You are a helpful, accurate assistant.') {
+async function turboChatCompletion (prompt, temperature = 0, service = 'You are a helpful, accurate assistant.') {
     /* 
      * NO NEED TO SPECIFY MAX TOKENS
      * role: assistant, system, user
@@ -65,7 +72,7 @@ async function turboChatCompletion (prompt, service = 'You are a helpful, accura
         },
         data: {
             model: "gpt-3.5-turbo",
-            temperature: 0,
+            temperature,
             messages:[
                 {
                     role: 'system',
@@ -94,7 +101,9 @@ exports.transcribeAudio = async (inputFileName, outputFileName) => {
     return;
 }
 
-const getTurboResponse = async (prompt, socket = null) => {
+const getTurboResponse = async (prompt, socket = null, temperature = 0, service = 'You are a helpful, accurate assistant.') => {
+    //console.log('TURBO', prompt);
+
     if (!prompt.endsWith("\n")) prompt += "\n";
 
     let result;
@@ -104,7 +113,7 @@ const getTurboResponse = async (prompt, socket = null) => {
     let maxCount = 5;
     while (!success) {
         try {
-            result = await turboChatCompletion(prompt);
+            result = await turboChatCompletion(prompt, temperature, service);
             success = true;
         } catch (err) {
             console.error("axios err.data", err.response.status, err.response);
@@ -133,43 +142,38 @@ const getTurboResponse = async (prompt, socket = null) => {
     return response;
 }
 
-exports.cleanTranscriptChunk = async (chunk, socket = null) => {
+
+exports.cleanTranscriptChunk = async (chunk, model = 'turbo', socket = null) => {
+    //chunk = chunk.replaceAll("\n", "") + "\n";
+    
     let prompt = process.env.CLEANUP_TRANSCRIPT_PROMPT + chunk;
-    return getTurboResponse(prompt, socket);    
+    
+    //console.log('prompt', prompt);
+
+    //prompt = 'Say hello world';
+    
+    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket);    
 }
 
-exports.startArticle = async initialTranscript => {
-    let prompt = `Below is an exerpt of a transcript. You will create the beginning of an article based on this transcript. Your response must be in HTML format. The response must engaging while using the information in the article. Do not create a blow by blow description of the transcript. The response should be approximately 500 words. The response must include two quotes from the transcript. \n\nTranscript:\n${initialTranscript}`;
+exports.startArticle = async (initialTranscript, model = 'turbo', socket = null) => {
+    let prompt = `"""I want you to create an warm, conversational blog post based on the information revealed in the following Transcript.
+    Make your blog post four paragraphs.  
+    Transcript:
+    ${initialTranscript}"""\n`;
 
-    return getTurboResponse(prompt);    
+    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket, 0.5, 'You are a witty writer — creating fascinating narratives from factual information.');   
 }
 
 exports.continueArticle = async transcript => {
     console.log("ai.continueArticle");
 }
 
-exports.endArticle = async (transcript, article) => {
-    let prompt = `Below is an exerpt of a Transcript as well as the beginning of an HTML Article based on a previous portion of the transcript. You will add HTML content to the article based on this present transcript excerpt. The response must engaging while using the information in the article. Do not create a blow by blow description of the transcript. The response should be approximately 500 words. The response must include two quotes from the transcript. The response should not repeat the prior article but solely provide the next part of the article. The next part of the article must be in HTML format.\n\nTranscript:\n${transcript}\n\nHTML Article:\n${article}\n`;
+exports.endArticle = async (transcript, article, model = 'turbo', socket = null ) => {
+    let prompt = `"""Below is an exerpt of a Transcript as well as the beginning of an article based on a previous portion of the transcript. You will provide the final four paragraphs of this article based on this present transcript excerpt. Do not create a blow by blow description of the transcript. Instead, the style of the paragraphs must be conversational, dynamic, and engaging — telling a story based on the information in the article. The response should be approximately 500 words. The response should not repeat the prior article but solely provide the next part of the article. End the response with a conlusion or     summary of the entire article.\n\nTranscript:\n${transcript}\n\nArticle:\n${article}"""\n`;
 
-    let result = getTurboResponse(prompt);
+    return model === 'davinci' ? await this.getDivinciResponse(prompt, socket) : await getTurboResponse(prompt, socket);
 
-    console.log('result', result);
-    
-    if (result.status === 'error') return result;
-
-    let test = result.content.indexOf('<p>');
-
-    if (test === -1) {
-        let paragraphs = result.content.split("\n");
-        for (let i = 0; i < paragraphs.length; ++i) {
-            let paragraph = paragraphs[i];
-            if (!paragraph.length) continue;
-            paragraph = '<p>' + paragraph + '</p>';
-        }
-        result.content = paragraphs.join("\n");
-    }
-
-    return result;
+    //console.log('result', result);
 }
 
 exports.fullArticle = async transcript => {
