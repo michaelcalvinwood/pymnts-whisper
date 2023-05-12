@@ -18,6 +18,42 @@ app.use(express.static('public'));
 app.use(express.json({limit: '200mb'})); 
 app.use(cors());
 
+const cleanedChunksJSON = require('./cleanedChunks.json');
+
+const createArticleFromCleanedChunks = async () => {
+    let cleanedChunks = cleanedChunksJSON;
+    let article;
+    let result;
+    let curArticleChunk;
+    if (cleanedChunks.length === 1) {
+        result = await ai.fullArticle(cleanedChunks[0]);
+        article = result.content;
+    } else {
+        for (let i = 0; i < cleanedChunks.length; ++i) {
+            console.log('message', `Using AI to write the article based on chunk #${i+1} of ${cleanedChunks.length}. This can take several minutes.`);
+            if (i === 0) {
+                result = await ai.startArticle(cleanedChunks[i]);
+                console.log('startArticle', result.content);
+                article = result.content;
+            } else {
+                if (i === cleanedChunks.length - 1 ) {
+                    result = await ai.endArticle(cleanedChunks[i], curArticleChunk);
+                   // console.log(result);
+                    console.log('endArticle', result.content);
+                }
+                else {
+                    result = await ai.continueArticle(cleanedChunks[i], curArticleChunk);
+                    console.log('continueArticle', result.content);
+                }
+                article += result.content;
+            }
+            curArticleChunk = result.content;
+        }
+        
+    }
+}
+//createArticleFromCleanedChunks();
+
 // const info = require('./media/visa.json');
 
 const url = 'https://content.jwplatform.com/videos/L0jBTtHF-96F1EhHl.mp4';
@@ -61,139 +97,6 @@ async function test() {
 
 const sleep = seconds => new Promise(r => setTimeout(r, seconds * 1000));
 
-async function doStuff() {
-    
-    const fileName = `./media/${uuidv4()}.mp4`;
-    console.log('downloading', fileName);
-    await axiosTools.urlToFile(url, fileName)
-    console.log('converting to mp3')
-    const mp3File = await deepgram.convertMp4ToMp3(fileName);
-    let loc = mp3File.indexOf('.mp3');
-    if (loc === -1) return false;
-    const jsonFile = mp3File.substring(0, loc) + '.json';
-    // console.log("transcribing the mp3 into raw words");
-    //const info = await deepgram.transcribeRecording(mp3File, jsonFile);
-
-    if (info) {
-        console.log('generating raw transcript', mp3File);
-        let rawTranscript = deepgram.generateSpeakerBasedTranscript(info);
-
-        console.log('splitting raw transcript into speaker-based paragraphs');
-        let speakerChunks = deepgram.getSpeakerChunks(rawTranscript);
-        rawTranscript = '';
-
-
-        console.log('creating AI-ready transcript chunks')
-        let transcriptChunks = deepgram.getTranscriptChunks(speakerChunks);
-        speakerChunks = null;
-
-        console.log('assigning speakers to AI chunks');
-        let speakerAssignedChunks = [];
-        for (let i = 0; i < transcriptChunks.length; ++i) {
-            speakerAssignedChunks.push(deepgram.assignSpeakers(transcriptChunks[i], speakers));
-        }
-        transcriptChunks = null;
-
-        const cleanedChunks = [];
-        for (let i = 0; i < speakerAssignedChunks.length; ++i) {
-            console.log(`Using AI to clean up imperfections in transcript chunk #${i+1}. This can take several minutes.`);
-            let result;
-            /*
-             * IMPORTANT: check if response is serverTooBusy and retry after n minutes where n doubles each time.
-             * Send message, ChatGPT Server is Overloaded. Will retry in __ seconds (with countdown)
-             */
-
-            result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i]);
-            let count = 0;
-            let seconds = 30;
-            const maxCount = 5;
-            while (result.status === 'error') {
-                seconds *= 2;
-                ++count;
-                if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
-                console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
-                await sleep(seconds);
-                result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i]);
-            }
-            
-            cleanedChunks.push(result.content);
-        }
-
-        speakerAssignedChunks = null;
-
-        let article;
-        if (cleanedChunks.length === 1) {
-            console.log(`Using AI to write the article. This can take several minutes.`);
-            let result = await ai.fullArticle(cleanedChunks[0]);
-            let count = 0;
-            let seconds = 30;
-            const maxCount = 5;
-            while (result.status === 'error') {
-                seconds *= 2;
-                ++count;
-                if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
-                console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
-                await sleep(seconds);
-                result = await ai.fullArticle(cleanedChunks[0]);
-            }
-            
-            article = result.content;
-            console.log(article);
-        } else {
-            for (let i = 0; i < cleanedChunks.length; ++i) {
-                console.log(`Using AI to write the article based on chunk #${i+1}. This can take several minutes.`);
-                if (i === 0) {
-                    let result = await ai.startArticle(cleanedChunks[i]);
-                    let count = 0;
-                    let seconds = 30;
-                    const maxCount = 5;
-                    while (result.status === 'error') {
-                        seconds *= 2;
-                        ++count;
-                        if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
-                        console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
-                        await sleep(seconds);
-                        result = await ai.startArticle(cleanedChunks[i]);
-                    }
-                    
-                    article = result.content;
-                    
-                } else {
-                    let result;
-                    if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i]);
-                    else result = await ai.continueArticle(cleanedChunks[i]);
-                    let count = 0;
-                    let seconds = 30;
-                    const maxCount = 5;
-                    while (result.status === 'error') {
-                        seconds *= 2;
-                        ++count;
-                        if (count >= maxCount) return console.error(JSON.stringify(result.message,null, 4));
-                        console.log(`ChatGPT Error. Waiting ${seconds} seconds and then trying again.`);
-                        await sleep(seconds);
-                        if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i]);
-                        else result = await ai.continueArticle(cleanedChunks[i]);
-                    }
-                    
-                    article += result.content;
-                }
-            }
-        }
-
-        
-        // Generate list of 10 titles
-
-        // getTags
-
-        // Post to WordPress 
-        
-        
-        // create article
-
-        //console.log(transcript);
-    }
-    
-}
 
 const handleUrl = async (socket, url) => {
     console.log('the url is ', url);
@@ -292,6 +195,7 @@ const handleSpeakers = async (socket, info) => {
         if (result.status === 'error') return socket.emit('error', 'ChatGPT servers are down. Please try again later.');
         console.log(`Cleaned Chunk #${i+1} of ${speakerAssignedChunks.length}`, result);
         cleanedChunks.push(result.content);
+        fs.writeFileSync(`transcriptChunk${i+1}.txt`, result.content);
         socket.emit('transcript', cleanedChunks.join("\n"));
     }
 

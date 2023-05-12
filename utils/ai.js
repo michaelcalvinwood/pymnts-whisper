@@ -156,20 +156,26 @@ exports.cleanTranscriptChunk = async (chunk, model = 'turbo', socket = null) => 
 }
 
 exports.startArticle = async (initialTranscript, model = 'turbo', socket = null) => {
-    let prompt = `"""I want you to create an warm, conversational blog post based on the information revealed in the following Transcript.
-    Make your blog post four paragraphs.  
+    let prompt = `"""Acting as a witty professor, write a warm and conversational four paragraph news article based on the facts in the following Transcript. 
+    Create a narrative. Avoid giving a blow-by-blow recap.
+    You are writing the intial four paragraphs. Therefore, do not include a summary or conclusion.
     Transcript:
     ${initialTranscript}"""\n`;
 
-    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket, 0.5, 'You are a witty writer — creating fascinating narratives from factual information.');   
+    return model === 'davinci' ? this.getDivinciResponse(prompt, socket) : getTurboResponse(prompt, socket, 0.4, 'You are a witty writer — creating fascinating narratives from factual information.');   
 }
 
-exports.continueArticle = async transcript => {
-    console.log("ai.continueArticle");
+exports.continueArticle = async (transcript, article, model = 'turbo', socket = null ) => {
+    let prompt = `"""Below is an exerpt of a Transcript as well as the beginning of a News Article based on a previous portion of the transcript. Acting as a witty professor, write a warm and conversational additional four paragraphs for the news article based on the facts in the following Transcript. 
+    Avoid including a summary or conclusion.\n\nTranscript:\n${transcript}\n\nNews Article:\n${article}"""\n`;
+
+    return model === 'davinci' ? await this.getDivinciResponse(prompt, socket) : await getTurboResponse(prompt, socket);
+
 }
 
 exports.endArticle = async (transcript, article, model = 'turbo', socket = null ) => {
-    let prompt = `"""Below is an exerpt of a Transcript as well as the beginning of an article based on a previous portion of the transcript. You will provide the final four paragraphs of this article based on this present transcript excerpt. Do not create a blow by blow description of the transcript. Instead, the style of the paragraphs must be conversational, dynamic, and engaging — telling a story based on the information in the article. The response should be approximately 500 words. The response should not repeat the prior article but solely provide the next part of the article. End the response with a conlusion or     summary of the entire article.\n\nTranscript:\n${transcript}\n\nArticle:\n${article}"""\n`;
+    let prompt = `"""Below is an exerpt of a Transcript as well as the beginning of a News Article based on a previous portion of the transcript. Acting as a witty professor, write a warm and conversational additional four paragraphs for the news article based on the facts in the following Transcript. 
+    Also provide a summary or conclusion.\n\nTranscript:\n${transcript}\n\nNews Article:\n${article}"""\n`;
 
     return model === 'davinci' ? await this.getDivinciResponse(prompt, socket) : await getTurboResponse(prompt, socket);
 
