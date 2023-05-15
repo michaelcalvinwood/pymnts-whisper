@@ -101,7 +101,7 @@ exports.transcribeAudio = async (inputFileName, outputFileName) => {
     return;
 }
 
-const getTurboResponse = async (prompt, socket = null, temperature = 0, service = 'You are a helpful, accurate assistant.') => {
+exports.getTurboResponse = async (prompt, temperature = 0, service = 'You are a helpful, accurate assistant.') => {
     //console.log('TURBO', prompt);
 
     if (!prompt.endsWith("\n")) prompt += "\n";
@@ -126,7 +126,6 @@ const getTurboResponse = async (prompt, socket = null, temperature = 0, service 
                 }
             }
             seconds *= 2;
-            if (socket) socket.emit('error', `ChatGPT servers overloaded. Retrying in ${seconds} seconds`);
             await sleep(seconds);
         }
     }
