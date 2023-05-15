@@ -418,7 +418,31 @@ async function createDynamicArticle (transcript, speakers) {
     }
     console.log('numWords', numWords);
 
-    console.log(paragraphs)
+    /*
+     * Split transcript paragraphs into chunks needed
+     */
+    const numChunks = Math.ceil(numWords / 1200);
+    const chunkSize = numWords / numChunks;
+
+    console.log('numChunks', numChunks, chunkSize);
+    
+    const chunks = [];
+    let curChunk = 0, curSize = 0;
+    chunks[curChunk] = {paragraphs: []}
+    for (let i = 0; i < paragraphs.length; ++i) {
+        console.log('curChunk', curChunk);
+        let words = paragraphs[i].split(" ");
+        numWords = words.length ? words.length : 1;
+        if (curSize + numWords > chunkSize && curChunk < numChunks - 1) {
+            ++curChunk;
+            chunks[curChunk] = {paragraphs: []};
+            curSize = 0;
+        }
+        chunks[curChunk].paragraphs.push(paragraphs[i]);
+        curSize += numWords;
+    }
+
+    console.log('chunks', chunks);
 
 }
 
