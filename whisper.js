@@ -392,14 +392,31 @@ const getCurrentSpeaker = (paragraph, curSpeaker) => {
 async function createDynamicArticle (transcript, speakers) {
     console.log(transcript, speakers);
 
+    /*
+     * Assign a speaker to every paragraph
+     */
     let curSpeaker = -1;
     const paragraphs = transcript.split("\n");
     for (let i = 0; i < paragraphs.length; ++i) {
         const paragraph = paragraphs[i];
         if (!paragraph) continue;
         curSpeaker = getCurrentSpeaker(paragraph, curSpeaker);
-        if (!paragraph.startsWith('Speaker')) paragraphs[i] = `Speaker ${curSpeaker}: ${paragraph}`;
+        if (curSpeaker >= speakers.length) curSpeaker = -1;
+        const speakerName = curSpeaker === -1 ? 'Unknown' : speakers[curSpeaker];
+        const loc = paragraph.indexOf(':');
+        if (!paragraph.startsWith('Speaker')) paragraphs[i] = `${speakerName}: ${paragraph}`;
+        else paragraphs[i] = `${speakerName}${paragraph.substring(loc)}`;
     }
+
+    /*
+     * Calculate the number of words
+     */
+    let numWords = 0;
+    for (let i = 0; i < paragraphs.length; ++i) {
+        let words = paragraphs[i].split(" ");
+        numWords += words.length ? words.length : 1;
+    }
+    console.log('numWords', numWords);
 
     console.log(paragraphs)
 
