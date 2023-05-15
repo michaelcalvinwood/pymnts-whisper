@@ -432,14 +432,56 @@ async function insertQuotes (chunk) {
     chunk.insertedQuotes = response.status === 'success' ? response.content : false;
 }
 
-async function rewriteInAnEngagingStyle (article) {
-    const prompt = `"""In the style of a eloquent author, rewrite the following News Article in a dynamic and conversational manner. Ensure your response preserves all the quotes in the news article. The response must be at least 800 words.
+function rewriteInAnEngagingStyle (article) {
+    return new Promise(async (resolve, reject) => {
+        const prompt = `"""In the style of a eloquent author, rewrite the following News Article in a dynamic and conversational manner. Ensure your response preserves all the quotes in the news article. The response must be at least 800 words.
+        News Article:
+        ${article.initialArticle}\n"""\n`;
+        
+        let response = await ai.getTurboResponse(prompt, 0.4);
+        
+        article.engagingArticle = response.status === 'success' ? response.content : false;
+        resolve('ok');
+    })
+}
+
+function getTagsAndTitles (article, numTitles = 10) {
+    return new Promise(async (resolve, reject) => {
+        const prompt = `"""Give ${numTitles} interesting titles for the provided News Article below.
+    Also generate a list of tags that include the important words and phrases in the response. 
+    The list of tags must also include the names of all people, products, services, places, companies, and organizations mentioned in the response.
+    Also generate a conclusion for the news article.
+    The return format must be stringified JSON in the following format: {
+        "titles": array of titles goes here
+        "tags": array of tags go here
+        "conclusion": conclusion goes here
+    }
     News Article:
-    ${article}\n"""\n`;
-    
-    let response = await ai.getTurboResponse(prompt, 0.4);
-    
-    return response.status === 'success' ? response.content : false;
+    ${article.initialArticle}\n"""\n`;
+
+        let response = await ai.getTurboResponse(prompt, 0.4);
+            
+        article.titleTags = response.status === 'success' ? response.content : false;
+        resolve('ok')
+    })
+}
+
+function transformChunk (chunk) {
+    return new Promise(async (resolve, reject) => {
+        await getCleanedTranscript(chunk);
+        if (chunk.cleanedTranscript === false) return reject ('Could not clean chunk.');
+            
+        await getTheFacts(chunk);
+        if (chunk.facts === false) return reject ('Could not extract facts');
+
+        await createInitialParagraphs(chunk);
+        if (chunk.initialArticle === false) return reject ('Could not create initial article from facts.');
+            
+        await insertQuotes(chunk);
+        if (chunk.insertedQuotes === false) return reject ('Could not insert quotes into the initial article.');
+           
+        resolve('ok');
+    })
 }
 
 async function createDynamicArticle (transcript, speakers) {
@@ -479,7 +521,7 @@ async function createDynamicArticle (transcript, speakers) {
 
     console.log('numChunks', numChunks, chunkSize);
     
-    const chunks = [];
+    let chunks = [];
     let curChunk = 0, curSize = 0;
     chunks[curChunk] = {paragraphs: []}
     for (let i = 0; i < paragraphs.length; ++i) {
@@ -499,50 +541,39 @@ async function createDynamicArticle (transcript, speakers) {
     /*
      * Process each chunk independently
      */
-    paragraphs = [];
-    transcript = '';
-    speakers = [];
+    paragraphs = null;
+    transcript = null;
+    speakers = null;
 
+    let transformations = [];
     for (let i = 0; i < chunks.length; ++i) {
-        await getCleanedTranscript(chunks[i]);
-        if (chunks[i].cleanedTranscript === false) {
-            console.error('Could not clean chunk.');
-            return;
-        }
-
-        await getTheFacts(chunks[i]);
-        if (chunks[i].facts === false) {
-            console.error('Could not extract facts');
-            return;
-        }
-
-        await createInitialParagraphs(chunks[i]);
-        if (chunks[i].initialArticle === false) {
-            console.error('Could not create initial article from facts.');
-            return;
-        }
-
-        await insertQuotes(chunks[i]);
-        if (chunks[i].insertedQuotes === false) {
-            console.error('Could not insert quotes into the initial article.');
-            return;
-        }
+       let task = transformChunk(chunks[i]);
+       transformations.push(task);
     }
 
+    console.log('waiting for tasks', transformations);
+    await Promise.all(transformations);
+
+    let article = {};
     const initialArticleArray = [];
-    for (let i = 0; i < chunks.length; ++i) initialArticleArray.push(chunks[i].insertedQuotes);
+    for (let i = 0; i < chunks.length; ++i) initialArticleArray.push(chunks[i].insertedQuotes);    
+    article.initialArticle = initialArticleArray.join("\n");
+    chunks = null;
 
-    const initialArticle = initialArticleArray.join("\n");
+    transformations = [];
 
-    console.log('INITIAL ARTICLE', initialArticle);
-
-    let articleWords = initialArticle.split(" ").length;
+    console.log('INITIAL ARTICLE', article.initialArticle);
+    
+    let articleWords = article.initialArticle.split(" ").length;
 
     console.log('articleWords', articleWords);
 
-    let finalArticle = await rewriteInAnEngagingStyle(initialArticle);
+    let finalArticle = rewriteInAnEngagingStyle(article);
+    let titleTags = getTagsAndTitles(article);
 
-    console.log('FINAL ARTICLE:', finalArticle);
+    await Promise.all([finalArticle, titleTags]);
+
+    console.log('FINAL ARTICLE:', article);
 
 
 }
