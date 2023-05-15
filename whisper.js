@@ -98,6 +98,34 @@ async function test() {
 const sleep = seconds => new Promise(r => setTimeout(r, seconds * 1000));
 
 
+const downloadMp4 = async url => {
+    const fileName = `./media/${uuidv4()}.mp4`;
+    const videoName = url.substring(url.lastIndexOf('/')+1);
+
+    try {
+        await axiosTools.urlToFile(url, fileName)
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
+    return fileName;
+}
+
+const convertMp4ToMp3 = async fileName => {
+    let mp3File;
+    try {
+        mp3File = await deepgram.convertMp4ToMp3(fileName);
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
+    
+    let loc = mp3File.indexOf('.mp3');
+    if (loc === -1) return false;
+
+    return mp3File
+}
+
 const handleUrl = async (socket, url) => {
     console.log('the url is ', url);
 
@@ -113,34 +141,20 @@ const handleUrl = async (socket, url) => {
 
     if (extension !== '.mp4') return socket.emit('error', 'URL is not .mp4');
     
-    const fileName = `./media/${uuidv4()}.mp4`;
-    const videoName = url.substring(url.lastIndexOf('/')+1);
-    socket.emit('message', `Downloading: ${videoName}`)
- 
-    try {
-        await axiosTools.urlToFile(url, fileName)
-    } catch (err) {
-        console.error(err);
-        return socket.emit('error', `Could not download ${videoName}. Please try again later.`)
-    }
+    socket.emit('message', `Downloading video`)
+    const fileName = await downloadMp4(url);
+    if (!fileName) return socket.emit('error', `Could not download video. Please try again later.`)
+    
     socket.emit('message', `Converting video file into an audio file.`);
 
-    let mp3File;
-    try {
-        mp3File = await deepgram.convertMp4ToMp3(fileName);
-    } catch (err) {
-        console.error(err);
-        return socket.emit('error', `Could not convert ${videoName} to mp3.`)
-    }
-    
+    let mp3File = await convertMp4ToMp3(fileName);
+    if (mp3File === false) socket.emit('error', `Could not convert videot to audio file.`);
+
     let loc = mp3File.indexOf('.mp3');
-    if (loc === -1) return socket.emit('error', `Could not convert ${videoName} to mp3.`);
-    
     const jsonFile = mp3File.substring(0, loc) + '.json';
    
     socket.emit ("Transcribing the audio file into raw words.");
     const info = await deepgram.transcribeRecording(mp3File, jsonFile);
-
     if (!info) return socket.emit('error', 'Could not transcribe the video.');
 
     const speakers = deepgram.getSpeakers(info);
@@ -153,7 +167,6 @@ const handleUrl = async (socket, url) => {
     socket.emit('transcript', rawTranscript);
     socket.emit('rawTranscript', rawTranscript);
     socket.emit('done', 'ready for speaker input');
-
     return;
 
     //console.log('urlInfo', urlInfo);
