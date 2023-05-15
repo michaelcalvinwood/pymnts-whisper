@@ -102,7 +102,7 @@ exports.transcribeAudio = async (inputFileName, outputFileName) => {
 }
 
 exports.getTurboResponse = async (prompt, temperature = 0, service = 'You are a helpful, accurate assistant.') => {
-    //console.log('TURBO', prompt);
+    console.log('TURBO', prompt);
 
     if (!prompt.endsWith("\n")) prompt += "\n";
 
@@ -136,7 +136,7 @@ exports.getTurboResponse = async (prompt, temperature = 0, service = 'You are a 
         content: result.data.choices[0].message.content
     }
 
-    //console.log(response);
+    console.log(response);
 
     return response;
 }
