@@ -406,22 +406,22 @@ async function getTheFacts (chunk) {
 }
 
 async function createInitialParagraphs (chunk) {
-    const numParagraphs = Math.ceil(chunk.size / 250);
+    const numParagraphs = Math.ceil(chunk.size / 350);
 
     console.log('numParagraphs', numParagraphs);
 
-    const prompt = `"""Acting as a witty professor, write a warm and conversational first ${numParagraphs > 1 ? `${numParagraphs} paragraphs` : "paragraph"} of a news article using the Facts, Ideas, Notions, and Concepts provided below:\n\n${chunk.facts}\n"""\n`;
+    const prompt = `"""Write a dynamic and engaging first ${numParagraphs > 1 ? `${numParagraphs} paragraphs` : "paragraph"} of a news article using the Facts, Ideas, Notions, and Concepts provided below:\n\n${chunk.facts}\n"""\n`;
 
-    let response = await ai.getTurboResponse(prompt, 0.4);
+    let response = await ai.getTurboResponse(prompt, 0.3);
     
     chunk.initialArticle = response.status === 'success' ? response.content : false;
 }
 
 async function insertQuotes (chunk) {
-    const numQuotes = Math.ceil(chunk.size / 500);
+    const numQuotes = Math.ceil(chunk.size / 450);
     const addition = numQuotes > 1 ? `${numQuotes} relevant quotes` : '1 relevant quote';
 
-    const prompt = `"""Below is the beginning of a News Article and a related Transcript. Find at least ${addition} from the provided Transcript. While preserving every sentence in the News Article,  expand the article by incorporating the quotes.
+    const prompt = `"""Below is the beginning of a News Article and a related Transcript. Expand this news article by incorporating at least ${addition} from the provided Transcript.
     News Article:
     ${chunk.initialArticle}
     Transcript:
@@ -430,6 +430,16 @@ async function insertQuotes (chunk) {
     let response = await ai.getTurboResponse(prompt, 0.4);
     
     chunk.insertedQuotes = response.status === 'success' ? response.content : false;
+}
+
+async function rewriteInAnEngagingStyle (article) {
+    const prompt = `"""In the style of a eloquent author, rewrite the following News Article in a dynamic and conversational manner. Ensure your response preserves all the quotes in the news article. The response must be at least 800 words.
+    News Article:
+    ${article}\n"""\n`;
+    
+    let response = await ai.getTurboResponse(prompt, 0.4);
+    
+    return response.status === 'success' ? response.content : false;
 }
 
 async function createDynamicArticle (transcript, speakers) {
@@ -495,9 +505,8 @@ async function createDynamicArticle (transcript, speakers) {
 
     for (let i = 0; i < chunks.length; ++i) {
         await getCleanedTranscript(chunks[i]);
-        console.log('cleanedTranscript', chunks[i].cleanedTranscript);
         if (chunks[i].cleanedTranscript === false) {
-            console.error('Could not clean chunk');
+            console.error('Could not clean chunk.');
             return;
         }
 
@@ -518,14 +527,74 @@ async function createDynamicArticle (transcript, speakers) {
             console.error('Could not insert quotes into the initial article.');
             return;
         }
-        
-        // insert quotes
-
-        // engaging style
-        break;
     }
+
+    const initialArticleArray = [];
+    for (let i = 0; i < chunks.length; ++i) initialArticleArray.push(chunks[i].insertedQuotes);
+
+    const initialArticle = initialArticleArray.join("\n");
+
+    console.log('INITIAL ARTICLE', initialArticle);
+
+    let articleWords = initialArticle.split(" ").length;
+
+    console.log('articleWords', articleWords);
+
+    let finalArticle = await rewriteInAnEngagingStyle(initialArticle);
+
+    console.log('FINAL ARTICLE:', finalArticle);
 
 
 }
 
 createDynamicArticle(testTranscript, testSpeakers);
+
+
+const alisonArticle = `Hal Levey of Penn.com and Mark Staunton, head of customer success with North America at Form 3, recently discussed the shift from batch payments to real-time payments. According to Staunton, traditional payment rails have achieved a certain efficiency around their requirements, but the core restriction is that files have to be swapped and books of payments sent together because the technology at the ultimate central infrastructures hasn't been able to manage the volume of payments on a one-by-one basis. This has resulted in a lot of manual overhead and processing into the cleanup from unhappy paths. Staunton also mentioned that immediate payments can address inherent limitations and bring better solutions to these things. 
+
+Staunton further explained that real-time payments will not replace all batch payments, and there will be a coexistence with pockets of resilience for batch. He cited the UK as a prime example of this coexistence, where real-time has been here for quite some time, but batch still has a bit of a lead. However, the growth and volume of real-time payments are in new use cases, such as gig workers who want to get paid daily or weekly. Immediate payments allow you to adapt to those types of use cases much more easily without upending your existing bulk process. 
+
+Staunton believes that as real-time payments increase their market share year on year on year, there will be a long tail. The corporate world is a little further behind in adapting to real-time payments because they may not see the full benefit to do that yet. He stated, "depending on how far into the future you want to look, I think it is just going to be real-time payments increasing their market share year on year on year. But there'll be a long tail, I think. And part of that, I suppose, is the perceived challenges of making the shift in your infrastructure and processes to a real-time world, and that'd be at the corporate level and at the banking level." 
+
+In conclusion, the shift from batch payments to real-time payments is a trend that is here to stay, and those who adapt quickly will be at an advantage. Staunton emphasized that the world of immediate payments can really address inherent limitations and bring better solutions to these things. He said, "immediate payments allow you to adapt to those types of use cases much more easily, without upending your existing bulk process."
+In an ever-changing digital world, the banking and corporate sectors are finding themselves in a race to keep up. The need for a shift in technology is becoming increasingly apparent, but there is a perceived hurdle in the initial change that needs to happen. Moving to a 24/7 always-on world can seem daunting, but the change in mindset needs to be focused on the medium-term benefits. Mark Staunton, an expert in API technology, explains that "as a senior payments figure out one of the main US banks said to me recently, the real-time pain connecting into the scheme isn't really the difficult bit. The work is the upstream to that point." This means that the challenge is not just about technically connecting to a new API-based system, but also about adapting to new processes and rules that come with real-time payments.
+
+Staunton emphasizes the importance of future-proofing in a real-time processing world. He explains that organizations need to take a medium to longer-term view on spending money on change, as it is a way to future-proof against future developments and enhancements. He states that "a little bit of upfront pain if you like that you may not see the benefit day one, but it is actually teeing you up for a much better future." Although it may be harder for organizations to take a medium to longer-term view on spending money on change, this type of change requires that slightly longer-term view.
+
+APIs, or Application Programming Interfaces, provide real flexibility in terms of speed and the ability to do more with data. Staunton explains that APIs give organizations the ability to try things out at a much lower cost, proof of concept pilot, or whatever you want to call it. APIs also give organizations the flexibility to do more with that data, being able to integrate with APIs across all the multiple systems they may have in their banking. Staunton emphasizes that a single API approach is key to simplification, allowing for a more streamlined and efficient process. He explains that "the more simplification you can have, the easier life is going to be." With the use of APIs, banks and corporates can move towards a more agile and responsive approach, enabling them to keep up with the ever-changing demands of the market.
+In today's fast-paced business world, companies are constantly looking for ways to streamline their operations and stay ahead of the competition. One solution that is gaining popularity is the use of APIs, or application programming interfaces. By leveraging an API, businesses can simplify their coding systems and free up resources to focus on customer experience and differentiation from competitors. Mark Staunton, an expert in the field, explains that "you're not trying to code your systems against multiple things. You're not having to worry about which market this payment is going to because the API is handling all of that for you. And ultimately what this does is frees up your resources to focus on your customer's journey, your customer experience, where you can really differentiate yourselves against your competitors."
+
+Furthermore, APIs can also free up R&D and tech budgets, allowing for more innovation and less reactive spending. As Staunton notes, "all the things we've talked about in the API world, in terms of simplifying the change event carries on into then the simplification of the ongoing run of that service as well. You have less maintenance, less overhead, and it, as you say, ultimately frees up your dollar spend and more importantly, your people resources, to work with your sales team, your product team to come up with more innovative solutions, either to catch up a little bit with your competitors if you feel fall behind or steal a march on them."
+
+Connecting to an API-based service can also help inform strategy and involve operational and production support teams early on. Staunton explains that "it means you can start bringing your operational teams in, your production support teams in quite early to see what it's going to look like. So rather than run it with a project team who then disappear and you hand it over and they're like, well, we don't really know. This looks really new. You can get everyone involved very early on because we have full capability simulators where you can be testing the actual kind of flows that you'll see in the real world from day one." However, it's important to note that realizing the benefits of APIs may take a more medium-term view and should not be expected to solve everything overnight. As Staunton advises, "it does take a well-thought-through planned change project...it does take a little bit of a more medium-term view. Don't expect amazing results overnight in terms of realizing those benefits." 
+
+Overall, it's clear that APIs are a valuable tool for businesses looking to stay ahead of the curve and deliver value to their customers. As Hal Levey and Mark Staunton discuss, the launch of "Buy Now" will crystallize the use of APIs for faster payments, but it's important to approach the implementation of APIs with a well-planned change project and a medium-term view.
+Hal Levey of Penn.com and Mark Staunton, head of customer success with North America at Form 3, recently discussed the shift from batch payments to real-time payments. According to Staunton, traditional payment rails have achieved a certain efficiency around their requirements, but the core restriction is that files have to be swapped and books of payments sent together because the technology at the ultimate central infrastructures hasn't been able to manage the volume of payments on a one-by-one basis. This has resulted in a lot of manual overhead and processing into the cleanup from unhappy paths. Staunton also mentioned that immediate payments can address inherent limitations and bring better solutions to these things. 
+
+Staunton further explained that real-time payments will not replace all batch payments, and there will be a coexistence with pockets of resilience for batch. He cited the UK as a prime example of this coexistence, where real-time has been here for quite some time, but batch still has a bit of a lead. However, the growth and volume of real-time payments are in new use cases, such as gig workers who want to get paid daily or weekly. Immediate payments allow you to adapt to those types of use cases much more easily without upending your existing bulk process. 
+
+Staunton believes that as real-time payments increase their market share year on year on year, there will be a long tail. The corporate world is a little further behind in adapting to real-time payments because they may not see the full benefit to do that yet. He stated, "depending on how far into the future you want to look, I think it is just going to be real-time payments increasing their market share year on year on year. But there'll be a long tail, I think. And part of that, I suppose, is the perceived challenges of making the shift in your infrastructure and processes to a real-time world, and that'd be at the corporate level and at the banking level." 
+
+In conclusion, the shift from batch payments to real-time payments is a trend that is here to stay, and those who adapt quickly will be at an advantage. Staunton emphasized that the world of immediate payments can really address inherent limitations and bring better solutions to these things. He said, "immediate payments allow you to adapt to those types of use cases much more easily, without upending your existing bulk process."
+In an ever-changing digital world, the banking and corporate sectors are finding themselves in a race to keep up. The need for a shift in technology is becoming increasingly apparent, but there is a perceived hurdle in the initial change that needs to happen. Moving to a 24/7 always-on world can seem daunting, but the change in mindset needs to be focused on the medium-term benefits. Mark Staunton, an expert in API technology, explains that "as a senior payments figure out one of the main US banks said to me recently, the real-time pain connecting into the scheme isn't really the difficult bit. The work is the upstream to that point." This means that the challenge is not just about technically connecting to a new API-based system, but also about adapting to new processes and rules that come with real-time payments.
+
+Staunton emphasizes the importance of future-proofing in a real-time processing world. He explains that organizations need to take a medium to longer-term view on spending money on change, as it is a way to future-proof against future developments and enhancements. He states that "a little bit of upfront pain if you like that you may not see the benefit day one, but it is actually teeing you up for a much better future." Although it may be harder for organizations to take a medium to longer-term view on spending money on change, this type of change requires that slightly longer-term view.
+
+APIs, or Application Programming Interfaces, provide real flexibility in terms of speed and the ability to do more with data. Staunton explains that APIs give organizations the ability to try things out at a much lower cost, proof of concept pilot, or whatever you want to call it. APIs also give organizations the flexibility to do more with that data, being able to integrate with APIs across all the multiple systems they may have in their banking. Staunton emphasizes that a single API approach is key to simplification, allowing for a more streamlined and efficient process. He explains that "the more simplification you can have, the easier life is going to be." With the use of APIs, banks and corporates can move towards a more agile and responsive approach, enabling them to keep up with the ever-changing demands of the market.
+In today's fast-paced business world, companies are constantly looking for ways to streamline their operations and stay ahead of the competition. One solution that is gaining popularity is the use of APIs, or application programming interfaces. By leveraging an API, businesses can simplify their coding systems and free up resources to focus on customer experience and differentiation from competitors. Mark Staunton, an expert in the field, explains that "you're not trying to code your systems against multiple things. You're not having to worry about which market this payment is going to because the API is handling all of that for you. And ultimately what this does is frees up your resources to focus on your customer's journey, your customer experience, where you can really differentiate yourselves against your competitors."
+
+Furthermore, APIs can also free up R&D and tech budgets, allowing for more innovation and less reactive spending. As Staunton notes, "all the things we've talked about in the API world, in terms of simplifying the change event carries on into then the simplification of the ongoing run of that service as well. You have less maintenance, less overhead, and it, as you say, ultimately frees up your dollar spend and more importantly, your people resources, to work with your sales team, your product team to come up with more innovative solutions, either to catch up a little bit with your competitors if you feel fall behind or steal a march on them."
+
+Connecting to an API-based service can also help inform strategy and involve operational and production support teams early on. Staunton explains that "it means you can start bringing your operational teams in, your production support teams in quite early to see what it's going to look like. So rather than run it with a project team who then disappear and you hand it over and they're like, well, we don't really know. This looks really new. You can get everyone involved very early on because we have full capability simulators where you can be testing the actual kind of flows that you'll see in the real world from day one." However, it's important to note that realizing the benefits of APIs may take a more medium-term view and should not be expected to solve everything overnight. As Staunton advises, "it does take a well-thought-through planned change project...it does take a little bit of a more medium-term view. Don't expect amazing results overnight in terms of realizing those benefits." 
+
+Overall, it's clear that APIs are a valuable tool for businesses looking to stay ahead of the curve and deliver value to their customers. As Hal Levey and Mark Staunton discuss, the launch of "Buy Now" will crystallize the use of APIs for faster payments, but it's important to approach the implementation of APIs with a well-planned change project and a medium-term view.`
+
+const redoAlisonArticle = async () => {
+    console.log('redoing');
+
+    const redo = await rewriteInAnEngagingStyle(alisonArticle);
+
+    console.log('redo', redo);
+}
+
+//redoAlisonArticle();
