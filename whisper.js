@@ -172,120 +172,86 @@ const handleUrl = async (socket, url) => {
     //console.log('urlInfo', urlInfo);
 }
 
-const handleSpeakers = async (socket, info) => {
-    const { rawTranscript, speakerList } = info;
-    console.log('handleSpeakers', rawTranscript);
+// const handleSpeakers = async (socket, info) => {
+//     const { rawTranscript, speakerList } = info;
+//     console.log('handleSpeakers', rawTranscript);
 
-    socket.emit('gotSpeakers', 'got them');
+//     socket.emit('gotSpeakers', 'got them');
 
-    socket.emit ('message', 'Assigning speakers to transcript.');
+//     socket.emit ('message', 'Assigning speakers to transcript.');
     
-    let speakerChunks = deepgram.getSpeakerChunks(rawTranscript);
+//     let speakerChunks = deepgram.getSpeakerChunks(rawTranscript);
 
-    console.log('speakerChunks', speakerChunks)
+//     console.log('speakerChunks', speakerChunks)
 
-    let transcriptChunks = deepgram.getTranscriptChunks(speakerChunks);
-    speakerChunks = null;
+//     let transcriptChunks = deepgram.getTranscriptChunks(speakerChunks);
+//     speakerChunks = null;
 
-    let speakerAssignedChunks = [];
-    for (let i = 0; i < transcriptChunks.length; ++i) {
-        speakerAssignedChunks.push(deepgram.assignSpeakers(transcriptChunks[i], speakerList));
-    }
-    socket.emit('transcript', speakerAssignedChunks.join("\n"));
+//     let speakerAssignedChunks = [];
+//     for (let i = 0; i < transcriptChunks.length; ++i) {
+//         speakerAssignedChunks.push(deepgram.assignSpeakers(transcriptChunks[i], speakerList));
+//     }
+//     socket.emit('transcript', speakerAssignedChunks.join("\n"));
 
-    console.log('speakerAssignedChunks', speakerAssignedChunks);
+//     console.log('speakerAssignedChunks', speakerAssignedChunks);
 
-    transcriptChunks = null;
+//     transcriptChunks = null;
 
-    const cleanedChunks = [];
+//     const cleanedChunks = [];
 
-    for (let i = 0; i < speakerAssignedChunks.length; ++i) {
-        socket.emit('message',`Using AI to clean up imperfections in transcript chunk #${i+1} of ${speakerAssignedChunks.length}. This can take several minutes.`);
-        let result;
+//     for (let i = 0; i < speakerAssignedChunks.length; ++i) {
+//         socket.emit('message',`Using AI to clean up imperfections in transcript chunk #${i+1} of ${speakerAssignedChunks.length}. This can take several minutes.`);
+//         let result;
         
-        result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i], 'turbo', socket);
+//         result = await ai.cleanTranscriptChunk(speakerAssignedChunks[i], 'turbo', socket);
         
-        if (result.status === 'error') return socket.emit('error', 'ChatGPT servers are down. Please try again later.');
-        console.log(`Cleaned Chunk #${i+1} of ${speakerAssignedChunks.length}`, result);
-        cleanedChunks.push(result.content);
-        fs.writeFileSync(`transcriptChunk${i+1}.txt`, result.content);
-        socket.emit('transcript', cleanedChunks.join("\n"));
-    }
+//         if (result.status === 'error') return socket.emit('error', 'ChatGPT servers are down. Please try again later.');
+//         console.log(`Cleaned Chunk #${i+1} of ${speakerAssignedChunks.length}`, result);
+//         cleanedChunks.push(result.content);
+//         fs.writeFileSync(`transcriptChunk${i+1}.txt`, result.content);
+//         socket.emit('transcript', cleanedChunks.join("\n"));
+//     }
 
-    fs.writeFileSync('cleanedChunks.json', JSON.stringify(cleanedChunks));
-    fs.writeFileSync('cleanedTranscript.txt', cleanedChunks.join("\n"));
+//     fs.writeFileSync('cleanedChunks.json', JSON.stringify(cleanedChunks));
+//     fs.writeFileSync('cleanedTranscript.txt', cleanedChunks.join("\n"));
     
-    // return socket.emit('message', "chunks ready for debugging");
+//     // return socket.emit('message', "chunks ready for debugging");
 
-    // let cleanedChunks = fs.readFileSync('./cleanedChunks.json', 'utf-8');
-    // cleanedChunks = JSON.parse(cleanedChunks);
+//     // let cleanedChunks = fs.readFileSync('./cleanedChunks.json', 'utf-8');
+//     // cleanedChunks = JSON.parse(cleanedChunks);
 
-    speakerAssignedChunks = null;
+//     speakerAssignedChunks = null;
 
-    console.log('cleanedChunks', cleanedChunks);
+//     console.log('cleanedChunks', cleanedChunks);
 
-    let article;
-    if (cleanedChunks.length === 1) {
-        socket.emit('message', `Using AI to write the article. This can take several minutes.`);
-        let result = await ai.fullArticle(cleanedChunks[0]);
-        article = result.content;
-        socket.emit('article', article);
-    } else {
-        for (let i = 0; i < cleanedChunks.length; ++i) {
-            socket.emit('message', `Using AI to write the article based on chunk #${i+1} of ${cleanedChunks.length}. This can take several minutes.`);
-            if (i === 0) {
-                let result = await ai.startArticle(cleanedChunks[i]);
-                console.log('result.content', result.content);
-                article = result.content;
-                socket.emit('article', article);
-            } else {
-                let result;
-                if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i], article);
-                else result = await ai.continueArticle(cleanedChunks[i]);
-                console.log('result.content', result.content);
-                article += result.content;
-                socket.emit('article', article);
-            }
-        }
-    }
+//     let article;
+//     if (cleanedChunks.length === 1) {
+//         socket.emit('message', `Using AI to write the article. This can take several minutes.`);
+//         let result = await ai.fullArticle(cleanedChunks[0]);
+//         article = result.content;
+//         socket.emit('article', article);
+//     } else {
+//         for (let i = 0; i < cleanedChunks.length; ++i) {
+//             socket.emit('message', `Using AI to write the article based on chunk #${i+1} of ${cleanedChunks.length}. This can take several minutes.`);
+//             if (i === 0) {
+//                 let result = await ai.startArticle(cleanedChunks[i]);
+//                 console.log('result.content', result.content);
+//                 article = result.content;
+//                 socket.emit('article', article);
+//             } else {
+//                 let result;
+//                 if (i === cleanedChunks.length - 1 ) result = await ai.endArticle(cleanedChunks[i], article);
+//                 else result = await ai.continueArticle(cleanedChunks[i]);
+//                 console.log('result.content', result.content);
+//                 article += result.content;
+//                 socket.emit('article', article);
+//             }
+//         }
+//     }
 
-    socket.emit('done', 'articleComplete');
-}
+//     socket.emit('done', 'articleComplete');
+// }
 
-const socketConnection = socket => {
-
-    console.log('connection', socket.id);
-
-    socket.on('url', (url) => handleUrl(socket, url));
-    socket.on('speakers', (speakerList) => handleSpeakers(socket, speakerList));
-}
-
-app.get('/', (req, res) => {
-    res.send('Hello, World!');
-});
-
-const httpsServer = https.createServer({
-    key: fs.readFileSync(privateKeyPath),
-    cert: fs.readFileSync(fullchainPath),
-  }, app);
-
-const io = require('socket.io')(httpsServer, {
-    cors: {
-      origin: "http://localhost:3000",
-      methods: ["GET", "POST"]
-    }
-  });
-
-io.on('connection', socket => {
-    socketConnection(socket);
-    // client.on('connection', (socket) => socketConnection(socket));
-    // client.on('event', data => { console.log(data) });
-    // client.on('disconnect', () => { console.log('disconnected', client.id)});
-});
-
-httpsServer.listen(httpsPort,  () => {
-    console.log(`HTTPS Server running on port ${httpsPort}`);
-});
 
 
 
@@ -484,9 +450,11 @@ function transformChunk (chunk) {
     })
 }
 
-async function createDynamicArticle (transcript, speakers) {
-    console.log(transcript, speakers);
+async function createDynamicArticle (transcript, speakers, socket) {
 
+    console.log(transcript, speakers);
+    
+    let published = [];
     /*
      * Assign a speaker to every paragraph
      */
@@ -494,15 +462,27 @@ async function createDynamicArticle (transcript, speakers) {
     let paragraphs = transcript.split("\n");
     for (let i = 0; i < paragraphs.length; ++i) {
         const paragraph = paragraphs[i];
-        if (!paragraph) continue;
+        if (!paragraph) {
+            published.push('');
+            continue;
+        }
         curSpeaker = getCurrentSpeaker(paragraph, curSpeaker);
         if (curSpeaker >= speakers.length) curSpeaker = -1;
         const speakerName = curSpeaker === -1 ? 'Unknown' : speakers[curSpeaker];
         const loc = paragraph.indexOf(':');
-        if (!paragraph.startsWith('Speaker')) paragraphs[i] = `${speakerName}: ${paragraph}`;
-        else paragraphs[i] = `${speakerName}${paragraph.substring(loc)}`;
+        if (!paragraph.startsWith('Speaker')) {
+            published.push(paragraphs[i]);
+            paragraphs[i] = `${speakerName}: ${paragraph}`;
+        }
+        else {
+            paragraphs[i] = `${speakerName}${paragraph.substring(loc)}`;
+            published.push(paragraphs[i]);
+        }
     }
 
+    let publishedTranscript = published.join("\n");
+    console.log('publishedTranscript');
+    socket.emit('publishedTranscript', publishedTranscript);
     /*
      * Calculate the number of words
      */
@@ -575,57 +555,54 @@ async function createDynamicArticle (transcript, speakers) {
 
     console.log('FINAL ARTICLE:', article);
 
-
 }
 
-createDynamicArticle(testTranscript, testSpeakers);
+const handleSpeakers = async (socket, info) => {
+    const { rawTranscript, speakerList } = info;
+    console.log('handleSpeakers', rawTranscript);
 
+    socket.emit('gotSpeakers', 'got them');
 
-const alisonArticle = `Hal Levey of Penn.com and Mark Staunton, head of customer success with North America at Form 3, recently discussed the shift from batch payments to real-time payments. According to Staunton, traditional payment rails have achieved a certain efficiency around their requirements, but the core restriction is that files have to be swapped and books of payments sent together because the technology at the ultimate central infrastructures hasn't been able to manage the volume of payments on a one-by-one basis. This has resulted in a lot of manual overhead and processing into the cleanup from unhappy paths. Staunton also mentioned that immediate payments can address inherent limitations and bring better solutions to these things. 
+    socket.emit ('message', 'Updating the transcript now.');
+    
+    await createDynamicArticle(rawTranscript, speakerList, socket);
 
-Staunton further explained that real-time payments will not replace all batch payments, and there will be a coexistence with pockets of resilience for batch. He cited the UK as a prime example of this coexistence, where real-time has been here for quite some time, but batch still has a bit of a lead. However, the growth and volume of real-time payments are in new use cases, such as gig workers who want to get paid daily or weekly. Immediate payments allow you to adapt to those types of use cases much more easily without upending your existing bulk process. 
-
-Staunton believes that as real-time payments increase their market share year on year on year, there will be a long tail. The corporate world is a little further behind in adapting to real-time payments because they may not see the full benefit to do that yet. He stated, "depending on how far into the future you want to look, I think it is just going to be real-time payments increasing their market share year on year on year. But there'll be a long tail, I think. And part of that, I suppose, is the perceived challenges of making the shift in your infrastructure and processes to a real-time world, and that'd be at the corporate level and at the banking level." 
-
-In conclusion, the shift from batch payments to real-time payments is a trend that is here to stay, and those who adapt quickly will be at an advantage. Staunton emphasized that the world of immediate payments can really address inherent limitations and bring better solutions to these things. He said, "immediate payments allow you to adapt to those types of use cases much more easily, without upending your existing bulk process."
-In an ever-changing digital world, the banking and corporate sectors are finding themselves in a race to keep up. The need for a shift in technology is becoming increasingly apparent, but there is a perceived hurdle in the initial change that needs to happen. Moving to a 24/7 always-on world can seem daunting, but the change in mindset needs to be focused on the medium-term benefits. Mark Staunton, an expert in API technology, explains that "as a senior payments figure out one of the main US banks said to me recently, the real-time pain connecting into the scheme isn't really the difficult bit. The work is the upstream to that point." This means that the challenge is not just about technically connecting to a new API-based system, but also about adapting to new processes and rules that come with real-time payments.
-
-Staunton emphasizes the importance of future-proofing in a real-time processing world. He explains that organizations need to take a medium to longer-term view on spending money on change, as it is a way to future-proof against future developments and enhancements. He states that "a little bit of upfront pain if you like that you may not see the benefit day one, but it is actually teeing you up for a much better future." Although it may be harder for organizations to take a medium to longer-term view on spending money on change, this type of change requires that slightly longer-term view.
-
-APIs, or Application Programming Interfaces, provide real flexibility in terms of speed and the ability to do more with data. Staunton explains that APIs give organizations the ability to try things out at a much lower cost, proof of concept pilot, or whatever you want to call it. APIs also give organizations the flexibility to do more with that data, being able to integrate with APIs across all the multiple systems they may have in their banking. Staunton emphasizes that a single API approach is key to simplification, allowing for a more streamlined and efficient process. He explains that "the more simplification you can have, the easier life is going to be." With the use of APIs, banks and corporates can move towards a more agile and responsive approach, enabling them to keep up with the ever-changing demands of the market.
-In today's fast-paced business world, companies are constantly looking for ways to streamline their operations and stay ahead of the competition. One solution that is gaining popularity is the use of APIs, or application programming interfaces. By leveraging an API, businesses can simplify their coding systems and free up resources to focus on customer experience and differentiation from competitors. Mark Staunton, an expert in the field, explains that "you're not trying to code your systems against multiple things. You're not having to worry about which market this payment is going to because the API is handling all of that for you. And ultimately what this does is frees up your resources to focus on your customer's journey, your customer experience, where you can really differentiate yourselves against your competitors."
-
-Furthermore, APIs can also free up R&D and tech budgets, allowing for more innovation and less reactive spending. As Staunton notes, "all the things we've talked about in the API world, in terms of simplifying the change event carries on into then the simplification of the ongoing run of that service as well. You have less maintenance, less overhead, and it, as you say, ultimately frees up your dollar spend and more importantly, your people resources, to work with your sales team, your product team to come up with more innovative solutions, either to catch up a little bit with your competitors if you feel fall behind or steal a march on them."
-
-Connecting to an API-based service can also help inform strategy and involve operational and production support teams early on. Staunton explains that "it means you can start bringing your operational teams in, your production support teams in quite early to see what it's going to look like. So rather than run it with a project team who then disappear and you hand it over and they're like, well, we don't really know. This looks really new. You can get everyone involved very early on because we have full capability simulators where you can be testing the actual kind of flows that you'll see in the real world from day one." However, it's important to note that realizing the benefits of APIs may take a more medium-term view and should not be expected to solve everything overnight. As Staunton advises, "it does take a well-thought-through planned change project...it does take a little bit of a more medium-term view. Don't expect amazing results overnight in terms of realizing those benefits." 
-
-Overall, it's clear that APIs are a valuable tool for businesses looking to stay ahead of the curve and deliver value to their customers. As Hal Levey and Mark Staunton discuss, the launch of "Buy Now" will crystallize the use of APIs for faster payments, but it's important to approach the implementation of APIs with a well-planned change project and a medium-term view.
-Hal Levey of Penn.com and Mark Staunton, head of customer success with North America at Form 3, recently discussed the shift from batch payments to real-time payments. According to Staunton, traditional payment rails have achieved a certain efficiency around their requirements, but the core restriction is that files have to be swapped and books of payments sent together because the technology at the ultimate central infrastructures hasn't been able to manage the volume of payments on a one-by-one basis. This has resulted in a lot of manual overhead and processing into the cleanup from unhappy paths. Staunton also mentioned that immediate payments can address inherent limitations and bring better solutions to these things. 
-
-Staunton further explained that real-time payments will not replace all batch payments, and there will be a coexistence with pockets of resilience for batch. He cited the UK as a prime example of this coexistence, where real-time has been here for quite some time, but batch still has a bit of a lead. However, the growth and volume of real-time payments are in new use cases, such as gig workers who want to get paid daily or weekly. Immediate payments allow you to adapt to those types of use cases much more easily without upending your existing bulk process. 
-
-Staunton believes that as real-time payments increase their market share year on year on year, there will be a long tail. The corporate world is a little further behind in adapting to real-time payments because they may not see the full benefit to do that yet. He stated, "depending on how far into the future you want to look, I think it is just going to be real-time payments increasing their market share year on year on year. But there'll be a long tail, I think. And part of that, I suppose, is the perceived challenges of making the shift in your infrastructure and processes to a real-time world, and that'd be at the corporate level and at the banking level." 
-
-In conclusion, the shift from batch payments to real-time payments is a trend that is here to stay, and those who adapt quickly will be at an advantage. Staunton emphasized that the world of immediate payments can really address inherent limitations and bring better solutions to these things. He said, "immediate payments allow you to adapt to those types of use cases much more easily, without upending your existing bulk process."
-In an ever-changing digital world, the banking and corporate sectors are finding themselves in a race to keep up. The need for a shift in technology is becoming increasingly apparent, but there is a perceived hurdle in the initial change that needs to happen. Moving to a 24/7 always-on world can seem daunting, but the change in mindset needs to be focused on the medium-term benefits. Mark Staunton, an expert in API technology, explains that "as a senior payments figure out one of the main US banks said to me recently, the real-time pain connecting into the scheme isn't really the difficult bit. The work is the upstream to that point." This means that the challenge is not just about technically connecting to a new API-based system, but also about adapting to new processes and rules that come with real-time payments.
-
-Staunton emphasizes the importance of future-proofing in a real-time processing world. He explains that organizations need to take a medium to longer-term view on spending money on change, as it is a way to future-proof against future developments and enhancements. He states that "a little bit of upfront pain if you like that you may not see the benefit day one, but it is actually teeing you up for a much better future." Although it may be harder for organizations to take a medium to longer-term view on spending money on change, this type of change requires that slightly longer-term view.
-
-APIs, or Application Programming Interfaces, provide real flexibility in terms of speed and the ability to do more with data. Staunton explains that APIs give organizations the ability to try things out at a much lower cost, proof of concept pilot, or whatever you want to call it. APIs also give organizations the flexibility to do more with that data, being able to integrate with APIs across all the multiple systems they may have in their banking. Staunton emphasizes that a single API approach is key to simplification, allowing for a more streamlined and efficient process. He explains that "the more simplification you can have, the easier life is going to be." With the use of APIs, banks and corporates can move towards a more agile and responsive approach, enabling them to keep up with the ever-changing demands of the market.
-In today's fast-paced business world, companies are constantly looking for ways to streamline their operations and stay ahead of the competition. One solution that is gaining popularity is the use of APIs, or application programming interfaces. By leveraging an API, businesses can simplify their coding systems and free up resources to focus on customer experience and differentiation from competitors. Mark Staunton, an expert in the field, explains that "you're not trying to code your systems against multiple things. You're not having to worry about which market this payment is going to because the API is handling all of that for you. And ultimately what this does is frees up your resources to focus on your customer's journey, your customer experience, where you can really differentiate yourselves against your competitors."
-
-Furthermore, APIs can also free up R&D and tech budgets, allowing for more innovation and less reactive spending. As Staunton notes, "all the things we've talked about in the API world, in terms of simplifying the change event carries on into then the simplification of the ongoing run of that service as well. You have less maintenance, less overhead, and it, as you say, ultimately frees up your dollar spend and more importantly, your people resources, to work with your sales team, your product team to come up with more innovative solutions, either to catch up a little bit with your competitors if you feel fall behind or steal a march on them."
-
-Connecting to an API-based service can also help inform strategy and involve operational and production support teams early on. Staunton explains that "it means you can start bringing your operational teams in, your production support teams in quite early to see what it's going to look like. So rather than run it with a project team who then disappear and you hand it over and they're like, well, we don't really know. This looks really new. You can get everyone involved very early on because we have full capability simulators where you can be testing the actual kind of flows that you'll see in the real world from day one." However, it's important to note that realizing the benefits of APIs may take a more medium-term view and should not be expected to solve everything overnight. As Staunton advises, "it does take a well-thought-through planned change project...it does take a little bit of a more medium-term view. Don't expect amazing results overnight in terms of realizing those benefits." 
-
-Overall, it's clear that APIs are a valuable tool for businesses looking to stay ahead of the curve and deliver value to their customers. As Hal Levey and Mark Staunton discuss, the launch of "Buy Now" will crystallize the use of APIs for faster payments, but it's important to approach the implementation of APIs with a well-planned change project and a medium-term view.`
-
-const redoAlisonArticle = async () => {
-    console.log('redoing');
-
-    const redo = await rewriteInAnEngagingStyle(alisonArticle);
-
-    console.log('redo', redo);
+    socket.emit('done', 'articleComplete');
 }
 
-//redoAlisonArticle();
+
+//createDynamicArticle(testTranscript, testSpeakers);
+const socketConnection = socket => {
+
+    console.log('connection', socket.id);
+
+    socket.on('url', (url) => handleUrl(socket, url));
+    socket.on('speakers', (speakerList) => handleSpeakers(socket, speakerList));
+}
+
+app.get('/', (req, res) => {
+    res.send('Hello, World!');
+});
+
+const httpsServer = https.createServer({
+    key: fs.readFileSync(privateKeyPath),
+    cert: fs.readFileSync(fullchainPath),
+  }, app);
+
+const io = require('socket.io')(httpsServer, {
+    cors: {
+      origin: "http://localhost:3000",
+      methods: ["GET", "POST"]
+    }
+  });
+
+io.on('connection', socket => {
+    socketConnection(socket);
+    // client.on('connection', (socket) => socketConnection(socket));
+    // client.on('event', data => { console.log(data) });
+    // client.on('disconnect', () => { console.log('disconnected', client.id)});
+});
+
+httpsServer.listen(httpsPort,  () => {
+    console.log(`HTTPS Server running on port ${httpsPort}`);
+});
