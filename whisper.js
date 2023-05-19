@@ -555,6 +555,8 @@ async function createDynamicArticle (transcript, speakers, socket) {
 
     console.log('FINAL ARTICLE:', article);
 
+    return article;
+
 }
 
 const handleSpeakers = async (socket, info) => {
@@ -568,6 +570,8 @@ const handleSpeakers = async (socket, info) => {
     await createDynamicArticle(rawTranscript, speakerList, socket);
 
     socket.emit('done', 'articleComplete');
+
+    socket.emit('article', article);
 }
 
 
