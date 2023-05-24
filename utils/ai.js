@@ -1,3 +1,5 @@
+const debug = false;
+
 require('dotenv').config();
 
 const axios = require('axios');
@@ -102,21 +104,21 @@ exports.transcribeAudio = async (inputFileName, outputFileName) => {
 }
 
 exports.getTurboResponse = async (prompt, temperature = 0, service = 'You are a helpful, accurate assistant.') => {
-    console.log('TURBO', prompt);
+    if (debug) console.log('TURBO', prompt);
 
     if (!prompt.endsWith("\n")) prompt += "\n";
 
     let result;
     let success = false;
     let count = 0;
-    let seconds = 30;
-    let maxCount = 5;
+    let seconds = 5;
+    let maxCount = 8;
     while (!success) {
         try {
             result = await turboChatCompletion(prompt, temperature, service);
             success = true;
         } catch (err) {
-            console.error("axios err.data", err.response.status, err.response);
+            console.error("axios err.data", err.response.status, err.response.statusText, err.response.data);
             ++count;
             if (count >= maxCount) {
                 return {
@@ -136,7 +138,7 @@ exports.getTurboResponse = async (prompt, temperature = 0, service = 'You are a 
         content: result.data.choices[0].message.content
     }
 
-    console.log(response);
+    if (debug) console.log(response);
 
     return response;
 }
