@@ -16,7 +16,7 @@ const fs = require('fs');
 
 const app = express();
 app.use(express.static('public'));
-app.use(express.json({limit: '200mb'})); 
+app.use(express.json({limit: '999mb'})); 
 app.use(cors());
 
 const cleanedChunksJSON = require('./cleanedChunks.json');
@@ -130,6 +130,8 @@ const convertMp4ToMp3 = async fileName => {
 }
 
 const processMp4File = async (fileName, socket) => {
+    socket.emit('message', `Converting video file into an audio file.`);
+
     let mp3File = await convertMp4ToMp3(fileName);
     if (mp3File === false) socket.emit('error', `Could not convert videot to audio file.`);
 
@@ -155,7 +157,6 @@ const processMp4File = async (fileName, socket) => {
 const handleUrl = async (socket, url) => {
     console.log('the url is ', url);
 
-
     let urlInfo;
     try {
         urlInfo = new URL(url);
@@ -170,8 +171,6 @@ const handleUrl = async (socket, url) => {
     socket.emit('message', `Downloading video`)
     const fileName = await downloadMp4(url);
     if (!fileName) return socket.emit('error', `Could not download video. Please try again later.`)
-    
-    socket.emit('message', `Converting video file into an audio file.`);
 
     await processMp4File(fileName, socket);
     return;
@@ -293,7 +292,6 @@ async function createDynamicArticle (transcript, speakers, entities, socket) {
 
     console.log(transcript, speakers);
     
-    
     /*
      * Assign a speaker to every paragraph
      */
@@ -369,7 +367,7 @@ async function createDynamicArticle (transcript, speakers, entities, socket) {
     await Promise.all(transformations);
 
     console.log('chunks', chunks);
-    socket.emit('message', 'chunks done. debug ready.');
+    //socket.emit('message', 'chunks done. debug ready.');
 
     let transcriptArr = [];
     for (let i = 0; i < chunks.length; ++i) {
@@ -439,30 +437,26 @@ const uploadMp4 = async (req, res) => {
 
     const socket = sockets[s];
 
-    socket.emit('message', 'got file');
-
-    return;
-
     var form = new formidable.IncomingForm();
+
+    socket.emit('message', 'Uploading the file. This can take several minutes.');
+
     form.parse(req, async function (err, fields, data) {
         //console.log('form data', data);
         if (err) {
             console.error(err);
-            res.status(500).json('form error');
-            resolve('form error');
-            return;
+            return res.status(500).json('form error');
         }
-        const fileName = data['File[]'].filepath;
+        let fileName = data['File[]'].filepath;
+
+        fs.renameSync(fileName, fileName + '.mp4');
+
+        fileName += '.mp4';
 
         processMp4File(fileName, socket)
         
-        //await ingestPdf(fileName, origName);
-        // remove file
-        //fs.unlinkSync(fileName);
-
-        res.status(200).json('ok');
-        resolve('ok')
-        return;
+        return res.status(200).json('ok');
+        
     });
 }
 
