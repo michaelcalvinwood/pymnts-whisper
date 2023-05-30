@@ -437,8 +437,7 @@ const uploadMp4 = async (req, res) => {
 
     const socket = sockets[s];
 
-    var form = new formidable.IncomingForm();
-    form.maxFileSize = 1000 * 1024 * 1024;
+    var form = new formidable.IncomingForm({maxFileSize: 1000 * 1024 * 1024});
 
     socket.emit('message', 'Uploading the file. This can take several minutes.');
 
