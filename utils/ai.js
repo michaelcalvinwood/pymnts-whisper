@@ -73,7 +73,8 @@ async function turboChatCompletion (prompt, temperature = 0, service = 'You are 
             'Authorization': `Bearer ${process.env.PYMNTS_OPENAI_KEY}`,
         },
         data: {
-            model: "gpt-3.5-turbo",
+            //model: "gpt-3.5-turbo",
+            model: "gpt-3.5-turbo-16k",
             temperature,
             messages:[
                 {

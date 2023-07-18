@@ -14,6 +14,8 @@ const https = require('https');
 const cors = require('cors');
 const fs = require('fs');
 
+const s3 = require('./utils/s3');
+
 const app = express();
 app.use(express.static('public'));
 app.use(express.json({limit: '999mb'})); 
@@ -381,6 +383,8 @@ async function createDynamicArticle (transcript, speakers, entities, socket) {
 
     transcript = transcriptArr.join("\n");
     socket.emit('finalTranscript', transcript);
+
+    return;
     
     let article = {};
     const initialArticleArray = [];
