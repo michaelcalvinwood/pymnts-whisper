@@ -129,17 +129,12 @@ const convertMp4ToMp3 = async fileName => {
     return mp3File
 }
 
-const processMp4File = async (fileName, socket) => {
-    socket.emit('message', `Converting video file into an audio file.`);
-
-    let mp3File = await convertMp4ToMp3(fileName);
-    if (mp3File === false) socket.emit('error', `Could not convert videot to audio file.`);
-
-    let loc = mp3File.indexOf('.mp3');
-    const jsonFile = mp3File.substring(0, loc) + '.json';
+const processAudioFile = async (audioFile, socket) => {
+    let loc = audioFile.lastIndexOf('.');
+    const jsonFile = audioFile.substring(0, loc) + '.json';
    
-    socket.emit ("Transcribing the audio file into raw words.");
-    const info = await deepgram.transcribeRecording(mp3File, jsonFile);
+    socket.emit ('message', "Transcribing the audio file into raw words.");
+    const info = await deepgram.transcribeRecording(audioFile, jsonFile);
     if (!info) return socket.emit('error', 'Could not transcribe the video.');
 
     const speakers = deepgram.getSpeakers(info);
@@ -152,6 +147,16 @@ const processMp4File = async (fileName, socket) => {
     socket.emit('transcript', rawTranscript);
     socket.emit('rawTranscript', rawTranscript);
     socket.emit('done', 'ready for speaker input');
+}
+
+const processMp4File = async (fileName, socket) => {
+    socket.emit('message', `Converting video file into an audio file.`);
+
+    let mp3File = await convertMp4ToMp3(fileName);
+    if (mp3File === false) socket.emit('error', `Could not convert video to audio file.`);
+    
+    await processAudioFile(mp3File, socket);
+    
 }
 
 const handleUrl = async (socket, url) => {
@@ -437,7 +442,7 @@ const uploadMp4 = async (req, res) => {
 
     const socket = sockets[s];
 
-    var form = new formidable.IncomingForm({maxFileSize: 1000 * 1024 * 1024});
+    var form = new formidable.IncomingForm({maxFileSize: 2000 * 1024 * 1024});
 
     socket.emit('message', 'Uploading the file. This can take several minutes.');
 
@@ -448,14 +453,42 @@ const uploadMp4 = async (req, res) => {
             return res.status(500).json('form error');
         }
         let fileName = data['File[]'].filepath;
+        let originalFileName = data['File[]'].originalFilename;
+        let loc = originalFileName.lastIndexOf('.');
+        let extension = originalFileName.substring(loc+1).toLowerCase();
+        console.log('fileName', originalFileName, extension, data);
+        fs.renameSync(fileName, fileName + '.' + extension);
+        fileName += '.' + extension;
+        switch (extension) {
+            case 'mp4':
+                processMp4File(fileName, socket);
+                return res.status(200).json('ok');    
+            case 'm4a':
+            case 'mp3':
+            case 'flac':
+            case 'wav':
+                processAudioFile(fileName, socket);
+                return res.status(200).json('ok');
+                
+        }
+        /*
+         * original mp4 code
+         */
+        if (extension === 'mp4') {
+            fs.renameSync(fileName, fileName + '.mp4');
 
-        fs.renameSync(fileName, fileName + '.mp4');
+            fileName += '.mp4';
+    
+            processMp4File(fileName, socket)
+            
+            return res.status(200).json('ok');    
+        }
 
-        fileName += '.mp4';
-
-        processMp4File(fileName, socket)
+        if (extension )
         
         return res.status(200).json('ok');
+
+        
         
     });
 }
