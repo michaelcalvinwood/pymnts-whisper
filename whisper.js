@@ -384,11 +384,11 @@ async function createDynamicArticle (transcript, speakers, entities, socket) {
     transcript = transcriptArr.join("\n");
     socket.emit('finalTranscript', transcript);
 
-    const finalTranscriptName = uuidv4() + '.txt';
+    const finalTranscriptName = uuidv4() + '.html';
     const link = await s3.uploadTxt(transcript, 'whisper', finalTranscriptName);
     console.log('link', link);
-    
-    return;
+
+    socket.emit('transcriptLink', link);
     
     let article = {};
     const initialArticleArray = [];

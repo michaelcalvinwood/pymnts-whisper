@@ -16,12 +16,20 @@ console.log(options);
 const s3Client = new S3(options);
 
 exports.uploadTxt = async (data, bucketFolder, bucketFileName) => {
+  let paragraphs = data.split("\n");
+
+  for (i = 0; i < paragraphs.length; ++i) paragraphs[i] = `<p>${paragraphs[i]}</p>`;
+
+  data = paragraphs.join("\n");
+
+    data = `<html><head><body>${data}</body></head></html>`;
+
     const bucketParams = {
         Bucket: process.env.S3_BUCKET,
         Key: `${bucketFolder}/${bucketFileName}`,
         Body: data,
         ACL: 'public-read',
-        'ContentType': 'text/txt'
+        'ContentType': 'text/html'
       };
     
       try {
