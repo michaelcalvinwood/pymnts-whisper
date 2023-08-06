@@ -13,6 +13,7 @@ const express = require('express');
 const https = require('https');
 const cors = require('cors');
 const fs = require('fs');
+const { exec } = require("child_process");
 
 const s3 = require('./utils/s3');
 
@@ -103,8 +104,8 @@ async function test() {
 const sleep = seconds => new Promise(r => setTimeout(r, seconds * 1000));
 
 
-const downloadMp4 = async url => {
-    const fileName = `./media/${uuidv4()}.mp4`;
+const downloadVideo = async (url, extension) => {
+    const fileName = `./media/${uuidv4()}${extension}`;
     const videoName = url.substring(url.lastIndexOf('/')+1);
 
     try {
@@ -116,7 +117,42 @@ const downloadMp4 = async url => {
     return fileName;
 }
 
+const convertFileToMp4 = fileName => {
+    console.log(fileName);
+    return new Promise((resolve, reject) => {
+        const loc = fileName.lastIndexOf('.');
+        const newFile = fileName.substring(0, loc) + '.mp4';
+        const command = `ffmpeg -i ${fileName} ${newFile}`;
+        console.log('command', command);
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.log(`error: ${error.message}`);
+                return resolve(false);
+            }
+            if (stderr) {
+                //console.log(`stderr: ${stderr}`);
+            }
+            console.log(`stdout: ${stdout}`);
+            return resolve(newFile);
+        });
+    })
+}
+
 const convertMp4ToMp3 = async fileName => {
+    console.log('convertMp4ToMp3', fileName);
+
+    const extLoc = fileName.lastIndexOf('.');
+    if (extLoc === -1) return false;
+
+    const extension = fileName.substring(extLoc);
+
+    if (extension !== '.mp4') {
+        fileName = await convertFileToMp4(fileName);
+        if (fileName === false) return false;
+    }
+
+    console.log('convertMp4ToMp3', fileName);
+
     let mp3File;
     try {
         mp3File = await deepgram.convertMp4ToMp3(fileName);
@@ -155,7 +191,8 @@ const processMp4File = async (fileName, socket) => {
     socket.emit('message', `Converting video file into an audio file.`);
 
     let mp3File = await convertMp4ToMp3(fileName);
-    if (mp3File === false) socket.emit('error', `Could not convert video to audio file.`);
+    console.log('mp3File', mp3File);
+    if (mp3File === false) return socket.emit('error', `Could not convert video to audio file.`);
     
     await processAudioFile(mp3File, socket);
     
@@ -173,10 +210,17 @@ const handleUrl = async (socket, url) => {
 
     const extension = url.substring(url.lastIndexOf('.'));
 
-    if (extension !== '.mp4') return socket.emit('error', 'URL is not .mp4');
+    switch (extension) {
+        case '.mp4':
+        case '.mkv':
+            const fileName = await downloadMp4(url, extension);
+            break;
+        default:
+            return socket.emit('error', 'URL is not .mp4');
+    }
     
     socket.emit('message', `Downloading video`)
-    const fileName = await downloadMp4(url);
+    
     if (!fileName) return socket.emit('error', `Could not download video. Please try again later.`)
 
     await processMp4File(fileName, socket);
@@ -468,6 +512,7 @@ const uploadMp4 = async (req, res) => {
         fs.renameSync(fileName, fileName + '.' + extension);
         fileName += '.' + extension;
         switch (extension) {
+            case 'mkv':
             case 'mp4':
                 processMp4File(fileName, socket);
                 return res.status(200).json('ok');    
